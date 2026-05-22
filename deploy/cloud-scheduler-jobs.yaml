@@ -1,0 +1,58 @@
+# Google Cloud Scheduler jobs for Jewelry CRM
+# Deploy with: gcloud scheduler jobs create http <name> --schedule="..." --uri=...
+
+jobs:
+  - name: expire-reservations-hourly
+    description: Auto-expire product reservations past their deadline
+    schedule: "0 * * * *"
+    timezone: "Asia/Kolkata"
+    target:
+      type: http
+      uri: "${BACKEND_URL}/api/reservations/trigger-expiry/"
+      http_method: POST
+      headers:
+        X-Scheduler-Token: "${SCHEDULER_SECRET}"
+
+  - name: sync-zoho-items-daily
+    description: Sync product items from Zoho Books every night
+    schedule: "0 2 * * *"
+    timezone: "Asia/Kolkata"
+    target:
+      type: http
+      uri: "${BACKEND_URL}/api/zoho/sync/items/"
+      http_method: POST
+      headers:
+        X-Scheduler-Token: "${SCHEDULER_SECRET}"
+
+  - name: sync-zoho-contacts-daily
+    description: Sync contacts from Zoho Books every night
+    schedule: "0 3 * * *"
+    timezone: "Asia/Kolkata"
+    target:
+      type: http
+      uri: "${BACKEND_URL}/api/zoho/sync/contacts/"
+      http_method: POST
+      headers:
+        X-Scheduler-Token: "${SCHEDULER_SECRET}"
+
+  - name: sync-zoho-invoices-daily
+    description: Sync invoices from Zoho Books
+    schedule: "0 4 * * *"
+    timezone: "Asia/Kolkata"
+    target:
+      type: http
+      uri: "${BACKEND_URL}/api/zoho/sync/invoices/"
+      http_method: POST
+      headers:
+        X-Scheduler-Token: "${SCHEDULER_SECRET}"
+
+  - name: followup-status-check-daily
+    description: Mark overdue follow-up tasks as overdue
+    schedule: "0 9 * * *"
+    timezone: "Asia/Kolkata"
+    target:
+      type: http
+      uri: "${BACKEND_URL}/api/tasks/update-overdue/"
+      http_method: POST
+      headers:
+        X-Scheduler-Token: "${SCHEDULER_SECRET}"

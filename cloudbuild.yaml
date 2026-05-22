@@ -1,0 +1,97 @@
+steps:
+  # ── Build backend image ──────────────────────────────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/backend:$COMMIT_SHA'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/backend:latest'
+      - './backend'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/backend:$COMMIT_SHA']
+
+  # ── Build frontend image ─────────────────────────────────────────────────
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/frontend:$COMMIT_SHA'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/frontend:latest'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_API_URL=https://jewelry-crm-api-${_REGION_SUFFIX}.a.run.app'
+      - './frontend'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/frontend:$COMMIT_SHA']
+
+  # ── Run DB migrations via Cloud Run Job ─────────────────────────────────
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'jobs'
+      - 'update'
+      - 'jewelry-crm-migrate'
+      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/backend:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--command=python,manage.py,migrate'
+      - '--set-env-vars=DJANGO_SETTINGS_MODULE=config.settings.production'
+      - '--set-secrets=DJANGO_SECRET_KEY=django-secret-key:latest,DB_PASSWORD=db-password:latest'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'jobs'
+      - 'execute'
+      - 'jewelry-crm-migrate'
+      - '--region=${_REGION}'
+      - '--wait'
+
+  # ── Deploy backend to Cloud Run ──────────────────────────────────────────
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'jewelry-crm-api'
+      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/backend:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars=DJANGO_SETTINGS_MODULE=config.settings.production'
+      - '--set-secrets=DJANGO_SECRET_KEY=django-secret-key:latest,DB_PASSWORD=db-password:latest,ZOHO_CLIENT_ID=zoho-client-id:latest,ZOHO_CLIENT_SECRET=zoho-client-secret:latest,ZOHO_REFRESH_TOKEN=zoho-refresh-token:latest,ZOHO_ORGANIZATION_ID=zoho-org-id:latest'
+      - '--add-cloudsql-instances=$PROJECT_ID:${_REGION}:jewelry-crm-db'
+      - '--min-instances=1'
+      - '--max-instances=10'
+      - '--memory=512Mi'
+      - '--cpu=1'
+
+  # ── Deploy frontend to Cloud Run ─────────────────────────────────────────
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'jewelry-crm-frontend'
+      - '--image=${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/frontend:$COMMIT_SHA'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--set-env-vars=NEXT_PUBLIC_API_URL=https://jewelry-crm-api-${_REGION_SUFFIX}.a.run.app'
+      - '--min-instances=1'
+      - '--max-instances=5'
+      - '--memory=512Mi'
+      - '--cpu=1'
+
+substitutions:
+  _REGION: asia-south1
+  # Cloud Run URL suffix — update after first deploy (format: <hash>-el.a.run.app)
+  _REGION_SUFFIX: uc
+
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/backend:$COMMIT_SHA'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/jewelry-crm/frontend:$COMMIT_SHA'

@@ -1,0 +1,118 @@
+'use client'
+
+import { useState } from 'react'
+import { useDebounce } from '@/hooks/use-debounce'
+import { Search, ArrowUpCircle } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { DataTable, Column } from '@/components/shared/data-table'
+import { PageHeader } from '@/components/shared/page-header'
+import { useVendorPayments } from '@/hooks/use-finances'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { VendorPayment } from '@/types'
+
+const PAGE_SIZE = 20
+
+const PAYMENT_MODE_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  bank_transfer: 'Bank Transfer',
+  cheque: 'Cheque',
+  card: 'Card',
+  upi: 'UPI',
+  other: 'Other',
+}
+
+export default function VendorPaymentsPage() {
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 400)
+  const [page, setPage] = useState(1)
+
+  const { data, isLoading } = useVendorPayments({
+    search: debouncedSearch || undefined,
+    page,
+    page_size: PAGE_SIZE,
+  })
+
+  const payments: VendorPayment[] = data?.results || data || []
+  const total = data?.count || payments.length
+
+  const columns: Column<VendorPayment>[] = [
+    {
+      key: 'payment_number',
+      header: 'Payment #',
+      render: (val) => <span className="font-mono font-medium text-gray-900">{String(val)}</span>,
+    },
+    {
+      key: 'vendor_name',
+      header: 'Vendor',
+      render: (val) => <span className="font-medium text-gray-900">{String(val || '—')}</span>,
+    },
+    {
+      key: 'payment_date',
+      header: 'Date',
+      render: (val) => <span className="text-gray-600">{formatDate(String(val))}</span>,
+    },
+    {
+      key: 'mode',
+      header: 'Mode',
+      render: (val) => (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+          {PAYMENT_MODE_LABELS[String(val)] || String(val)}
+        </span>
+      ),
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      render: (val) => <span className="font-semibold text-gray-900">{formatCurrency(Number(val))}</span>,
+    },
+    {
+      key: 'bill_number',
+      header: 'Bill #',
+      render: (val) => <span className="font-mono text-gray-600">{String(val || '—')}</span>,
+    },
+    {
+      key: 'paid_through',
+      header: 'Paid Through',
+      render: (val) => <span className="text-gray-500">{String(val || '—')}</span>,
+    },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Vendor Payments"
+        description={`${total} total payments`}
+      />
+
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="relative flex-1 min-w-[160px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search by payment # or vendor..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+          />
+        </div>
+      </div>
+
+      <DataTable
+        data={payments}
+        columns={columns}
+        isLoading={isLoading}
+        emptyMessage="No vendor payments found"
+        emptyIcon={<ArrowUpCircle className="h-10 w-10" />}
+        pagination={
+          data?.count
+            ? {
+                page,
+                pageSize: PAGE_SIZE,
+                total: data.count,
+                onPageChange: setPage,
+              }
+            : undefined
+        }
+      />
+    </div>
+  )
+}

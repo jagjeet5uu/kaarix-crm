@@ -1,0 +1,15 @@
+version: "3.9"
+# Development override — runs frontend with hot-reload (no production build required)
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    command: npm run dev

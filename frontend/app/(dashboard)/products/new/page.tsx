@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,7 +18,9 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/shared/page-header'
+import { GoldPriceTicker } from '@/components/dashboard/gold-price-ticker'
 import { useCreateProduct } from '@/hooks/use-products'
+import { useGoldPrices } from '@/hooks/use-dashboard'
 
 const CATEGORIES = [
   { value: 'rings', label: 'Rings' },
@@ -78,19 +80,53 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>
 
+// Map metal_purity form value → live API per_gram key
+const PURITY_TO_LIVE_KEY: Record<string, { metal: 'gold' | 'silver'; key: string }> = {
+  '24k': { metal: 'gold', key: '24k' },
+  '22k': { metal: 'gold', key: '22k' },
+  '18k': { metal: 'gold', key: '18k' },
+  '14k': { metal: 'gold', key: '14k' },
+  '925':  { metal: 'silver', key: '999' },
+}
+
 export default function NewProductPage() {
   const router = useRouter()
   const { mutate: createProduct, isPending } = useCreateProduct()
+  const { data: liveGoldData } = useGoldPrices()
 
   const {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { inventory_status: 'available' },
   })
+
+  const watchedPurity = watch('metal_purity')
+  const watchedNetWeight = watch('net_weight')
+
+  // Compute live metal cost from current form values
+  const getLiveMetalCost = (): { cost: number; rate: number; label: string } | null => {
+    if (!liveGoldData || !watchedPurity || !watchedNetWeight) return null
+    const mapping = PURITY_TO_LIVE_KEY[watchedPurity]
+    if (!mapping) return null
+    const weight = parseFloat(watchedNetWeight)
+    if (!weight || isNaN(weight)) return null
+    const rate = mapping.metal === 'gold'
+      ? liveGoldData.gold?.per_gram?.[mapping.key]
+      : liveGoldData.silver?.per_gram?.[mapping.key]
+    if (!rate) return null
+    return {
+      cost: Math.round(rate * weight),
+      rate: Math.round(rate),
+      label: watchedPurity.toUpperCase() + (mapping.metal === 'silver' ? ' Silver' : ' Gold'),
+    }
+  }
+
+  const liveMetalCost = getLiveMetalCost()
 
   const onSubmit = (data: FormData) => {
     createProduct(
@@ -111,6 +147,8 @@ export default function NewProductPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
+      <GoldPriceTicker />
+
       <PageHeader
         title="Add Product"
         actions={
@@ -120,6 +158,60 @@ export default function NewProductPage() {
           </Button>
         }
       />
+
+      {/* Live Gold Rate Reference */}
+      {liveGoldData && (
+        <Card className="border-amber-200 bg-amber-950/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-amber-800 flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+              </span>
+              Today&apos;s Live Gold Rates
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Rate grid */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {(['24k', '22k', '18k', '14k'] as const).map((k) => (
+                <div key={k} className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-center">
+                  <p className="text-xs text-amber-600 font-medium">{k.toUpperCase()}</p>
+                  <p className="text-sm font-bold text-gray-900 tabular-nums">
+                    ₹{Math.round(liveGoldData.gold.per_gram[k]).toLocaleString('en-IN')}
+                  </p>
+                  <p className="text-[10px] text-gray-400">/gram</p>
+                </div>
+              ))}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center">
+                <p className="text-xs text-slate-500 font-medium">Silver</p>
+                <p className="text-sm font-bold text-gray-900 tabular-nums">
+                  ₹{Math.round(liveGoldData.silver.per_gram['999']).toLocaleString('en-IN')}
+                </p>
+                <p className="text-[10px] text-gray-400">/gram</p>
+              </div>
+            </div>
+
+            {/* Dynamic metal cost — updates as user fills purity + weight */}
+            {liveMetalCost ? (
+              <div className="flex items-center gap-3 bg-amber-950 rounded-lg px-4 py-2.5">
+                <div className="text-amber-300 text-xs font-semibold">Live Metal Cost</div>
+                <div className="text-amber-400 text-xs">
+                  {liveMetalCost.label} · ₹{liveMetalCost.rate.toLocaleString('en-IN')}/g
+                  {' × '}{parseFloat(watchedNetWeight!).toFixed(2)}g
+                </div>
+                <div className="ml-auto text-amber-100 font-bold text-sm tabular-nums">
+                  = ₹{liveMetalCost.cost.toLocaleString('en-IN')}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-amber-700/60">
+                Select metal purity and enter net weight above to see live metal cost.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Basic Info */}

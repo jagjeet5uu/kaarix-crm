@@ -1,6 +1,6 @@
 import urllib.request
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.conf import settings
 from django.core.cache import cache
@@ -435,10 +435,24 @@ class SyncErrorsView(APIView):
 
 
 class GoldPriceView(APIView):
-    """Real-time gold & silver prices via GoldAPI.io — cached 5 minutes."""
+    """Real-time gold & silver prices via GoldAPI.io.
+
+    The external API is called at most ONCE PER DAY — the cache is set to
+    expire at the next 9:00 AM IST so prices refresh each morning automatically.
+    """
     permission_classes = [IsAuthenticated]
-    CACHE_KEY = 'goldapi_prices'
-    CACHE_TTL = 300  # 5 minutes
+    CACHE_KEY = 'goldapi_prices_daily'
+    STALE_KEY = 'goldapi_prices_stale'
+    IST = dt_timezone(timedelta(hours=5, minutes=30))
+
+    def _ttl_until_next_9am_ist(self) -> int:
+        """Return seconds until next 9:00 AM IST (minimum 60 s)."""
+        now_ist = datetime.now(self.IST)
+        nine_am = now_ist.replace(hour=9, minute=0, second=0, microsecond=0)
+        if now_ist >= nine_am:
+            nine_am += timedelta(days=1)          # already past 9 AM → next day
+        ttl = int((nine_am - now_ist).total_seconds())
+        return max(ttl, 60)
 
     def _fetch_metal(self, symbol: str) -> dict:
         url = f'https://www.goldapi.io/api/{symbol}/INR'
@@ -488,12 +502,13 @@ class GoldPriceView(APIView):
                     },
                 },
             }
-            cache.set(self.CACHE_KEY, data, self.CACHE_TTL)
+            ttl = self._ttl_until_next_9am_ist()
+            cache.set(self.CACHE_KEY, data, ttl)
+            cache.set(self.STALE_KEY, data, ttl + 86400)  # keep stale copy 1 extra day
             return Response(data)
 
         except Exception as e:
-            # Return cached stale data if available, else error
-            stale = cache.get(self.CACHE_KEY + '_stale')
+            stale = cache.get(self.STALE_KEY)
             if stale:
                 return Response({**stale, 'cached': True, 'stale': True})
             return Response(

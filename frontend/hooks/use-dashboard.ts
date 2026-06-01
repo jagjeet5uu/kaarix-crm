@@ -71,8 +71,11 @@ export function useGoldPrices() {
       const res = await reportsAPI.goldPrices()
       return res.data
     },
-    refetchInterval: 5 * 60 * 1000, // refresh every 5 minutes
-    staleTime: 4 * 60 * 1000,       // consider fresh for 4 minutes
+    // Backend caches until next 9 AM IST — frontend mirrors that:
+    // hold data for 23 h so the single daily fetch is shared across all pages.
+    staleTime: 23 * 60 * 60 * 1000,
+    refetchInterval: false,          // no polling — backend controls freshness
+    refetchOnWindowFocus: false,
   })
 }
 

@@ -125,6 +125,7 @@ export const reportsAPI = {
   salespersonPerformance: () => api.get('/reports/salesperson-performance/'),
   financialSummary: () => api.get('/reports/financial-summary/'),
   syncErrors: () => api.get('/reports/sync-errors/'),
+  goldPrices: () => api.get('/reports/gold-prices/'),
 }
 
 export const zohoAPI = {

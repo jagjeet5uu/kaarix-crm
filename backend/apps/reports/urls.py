@@ -4,6 +4,7 @@ from .views import (
     DashboardView,
     FinancialSummaryView,
     FollowUpsView,
+    GoldPriceView,
     InventorySummaryView,
     LeadsByStageView,
     SalespersonPerformanceView,
@@ -20,4 +21,5 @@ urlpatterns = [
     path('salesperson-performance/', SalespersonPerformanceView.as_view(), name='salesperson-performance'),
     path('financial-summary/', FinancialSummaryView.as_view(), name='financial-summary'),
     path('sync-errors/', SyncErrorsView.as_view(), name='sync-errors'),
+    path('gold-prices/', GoldPriceView.as_view(), name='gold-prices'),
 ]

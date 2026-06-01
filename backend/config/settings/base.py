@@ -156,6 +156,9 @@ ZOHO_REDIRECT_URI = os.environ.get('ZOHO_REDIRECT_URI', 'http://localhost:8000/a
 
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
+# GoldAPI.io — real-time gold & silver prices
+GOLDAPI_KEY = os.environ.get('GOLDAPI_KEY', '')
+
 # Instagram Webhook
 INSTAGRAM_VERIFY_TOKEN = os.environ.get('INSTAGRAM_VERIFY_TOKEN', 'miraya_instagram_webhook_2026')
 INSTAGRAM_PAGE_ACCESS_TOKEN = os.environ.get('INSTAGRAM_PAGE_ACCESS_TOKEN', '')

@@ -64,6 +64,18 @@ export function useFinancialSummary() {
   })
 }
 
+export function useGoldPrices() {
+  return useQuery({
+    queryKey: ['reports', 'gold_prices'],
+    queryFn: async () => {
+      const res = await reportsAPI.goldPrices()
+      return res.data
+    },
+    refetchInterval: 5 * 60 * 1000, // refresh every 5 minutes
+    staleTime: 4 * 60 * 1000,       // consider fresh for 4 minutes
+  })
+}
+
 export function useSalespersonPerformance() {
   return useQuery({
     queryKey: ['reports', 'salesperson_performance'],

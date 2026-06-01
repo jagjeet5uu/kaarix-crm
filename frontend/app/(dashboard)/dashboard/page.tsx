@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { KpiCards } from '@/components/dashboard/kpi-cards'
 import { LeadsChart } from '@/components/dashboard/leads-chart'
 import { InventoryChart } from '@/components/dashboard/inventory-chart'
+import { GoldPriceTicker } from '@/components/dashboard/gold-price-ticker'
 import { PageHeader } from '@/components/shared/page-header'
 import { useDashboardStats, useInventorySummary } from '@/hooks/use-dashboard'
 import { useFollowUpsToday, useOverdueFollowUps } from '@/hooks/use-leads'
@@ -55,6 +56,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-7">
+      {/* Live gold & silver price ticker */}
+      <GoldPriceTicker />
+
       <PageHeader
         title={`${greeting} 👋`}
         description="Here's what's happening with your jewelry business today."

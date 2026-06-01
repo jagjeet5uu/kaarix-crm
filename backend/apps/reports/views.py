@@ -1,5 +1,9 @@
+import urllib.request
+import json
 from datetime import timedelta
 
+from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Count, Sum, Q, Avg, F, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -428,3 +432,71 @@ class SyncErrorsView(APIView):
             'total_errors': ZohoSyncLog.objects.filter(status='failed').count(),
             'errors': data,
         })
+
+
+class GoldPriceView(APIView):
+    """Real-time gold & silver prices via GoldAPI.io — cached 5 minutes."""
+    permission_classes = [IsAuthenticated]
+    CACHE_KEY = 'goldapi_prices'
+    CACHE_TTL = 300  # 5 minutes
+
+    def _fetch_metal(self, symbol: str) -> dict:
+        url = f'https://www.goldapi.io/api/{symbol}/INR'
+        req = urllib.request.Request(
+            url,
+            headers={
+                'x-access-token': settings.GOLDAPI_KEY,
+                'Content-Type': 'application/json',
+            },
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            return json.loads(resp.read().decode())
+
+    def get(self, request):
+        cached = cache.get(self.CACHE_KEY)
+        if cached:
+            return Response({**cached, 'cached': True})
+
+        try:
+            gold = self._fetch_metal('XAU')
+            silver = self._fetch_metal('XAG')
+
+            data = {
+                'cached': False,
+                'updated_at': timezone.now().isoformat(),
+                'gold': {
+                    'price_troy_oz_inr': round(gold.get('price', 0), 2),
+                    'change': round(gold.get('ch', 0), 2),
+                    'change_pct': round(gold.get('chp', 0), 2),
+                    'prev_close': round(gold.get('prev_close_price', 0), 2),
+                    'per_gram': {
+                        '24k': round(gold.get('price_gram_24k', 0), 2),
+                        '22k': round(gold.get('price_gram_22k', 0), 2),
+                        '21k': round(gold.get('price_gram_21k', 0), 2),
+                        '20k': round(gold.get('price_gram_20k', 0), 2),
+                        '18k': round(gold.get('price_gram_18k', 0), 2),
+                        '14k': round(gold.get('price_gram_14k', 0), 2),
+                    },
+                },
+                'silver': {
+                    'price_troy_oz_inr': round(silver.get('price', 0), 2),
+                    'change': round(silver.get('ch', 0), 2),
+                    'change_pct': round(silver.get('chp', 0), 2),
+                    'prev_close': round(silver.get('prev_close_price', 0), 2),
+                    'per_gram': {
+                        '999': round(silver.get('price_gram_24k', 0), 2),
+                    },
+                },
+            }
+            cache.set(self.CACHE_KEY, data, self.CACHE_TTL)
+            return Response(data)
+
+        except Exception as e:
+            # Return cached stale data if available, else error
+            stale = cache.get(self.CACHE_KEY + '_stale')
+            if stale:
+                return Response({**stale, 'cached': True, 'stale': True})
+            return Response(
+                {'error': 'Unable to fetch gold prices', 'detail': str(e)},
+                status=503,
+            )

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.customers.models import Customer
 from apps.customers.serializers import CustomerListSerializer
 from .models import Lead, LeadActivity, LeadProduct, Task
 
@@ -39,6 +40,18 @@ class LeadSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.SerializerMethodField()
     activities_count = serializers.SerializerMethodField()
 
+    # Make customer optional at field level — resolved in create() from name+mobile
+    customer = serializers.PrimaryKeyRelatedField(
+        queryset=Customer.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+    # Write-only helpers — allow quick lead creation without a pre-existing customer
+    customer_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    mobile = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    email = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = Lead
         fields = [
@@ -46,8 +59,10 @@ class LeadSerializer(serializers.ModelSerializer):
             'source', 'stage', 'interested_category', 'budget_min', 'budget_max',
             'occasion', 'required_date', 'follow_up_date', 'notes', 'lost_reason',
             'created_by', 'activities_count', 'created_at', 'updated_at',
+            'customer_name', 'mobile', 'email',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'assigned_to_name', 'activities_count']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'assigned_to_name',
+                            'activities_count', 'created_by']
 
     def get_assigned_to_name(self, obj):
         if obj.assigned_to:
@@ -57,10 +72,48 @@ class LeadSerializer(serializers.ModelSerializer):
     def get_activities_count(self, obj):
         return obj.activities.count()
 
+    def validate(self, data):
+        # Need either an existing customer FK or name+mobile to create one
+        if not data.get('customer'):
+            if not data.get('mobile'):
+                raise serializers.ValidationError(
+                    {'mobile': 'Mobile number is required.'}
+                )
+            if not data.get('customer_name'):
+                raise serializers.ValidationError(
+                    {'customer_name': 'Customer name is required.'}
+                )
+        return data
+
     def create(self, validated_data):
         request = self.context.get('request')
+
+        # Pop write-only helpers
+        customer_name = validated_data.pop('customer_name', '') or ''
+        mobile = validated_data.pop('mobile', '') or ''
+        email = validated_data.pop('email', '') or ''
+
+        # Resolve customer — find by mobile or create a new one
+        if not validated_data.get('customer'):
+            name_parts = customer_name.strip().split(' ', 1)
+            first_name = name_parts[0]
+            last_name = name_parts[1] if len(name_parts) > 1 else ''
+            customer, _ = Customer.objects.get_or_create(
+                mobile=mobile,
+                defaults={
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'email': email,
+                },
+            )
+            validated_data['customer'] = customer
+
         if request and request.user.is_authenticated:
             validated_data['created_by'] = request.user
+            # Auto-assign to the creating user if not specified
+            if not validated_data.get('assigned_to'):
+                validated_data['assigned_to'] = request.user
+
         return super().create(validated_data)
 
 

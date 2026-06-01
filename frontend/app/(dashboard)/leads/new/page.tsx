@@ -26,7 +26,7 @@ const schema = z.object({
   mobile: z.string().min(10, 'Valid mobile number required'),
   email: z.string().email().optional().or(z.literal('')),
   stage: z.string().min(1, 'Stage is required'),
-  lead_source: z.string().optional(),
+  source: z.string().optional(),
   interested_category: z.string().optional(),
   budget_min: z.string().optional(),
   budget_max: z.string().optional(),
@@ -55,6 +55,7 @@ export default function NewLeadPage() {
       {
         ...data,
         email: data.email || undefined,
+        source: data.source || undefined,
         budget_min: data.budget_min ? Number(data.budget_min) : undefined,
         budget_max: data.budget_max ? Number(data.budget_max) : undefined,
       },
@@ -129,7 +130,7 @@ export default function NewLeadPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Lead Source</Label>
-              <Select onValueChange={(v) => setValue('lead_source', v)}>
+              <Select onValueChange={(v) => setValue('source', v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select source" />
                 </SelectTrigger>

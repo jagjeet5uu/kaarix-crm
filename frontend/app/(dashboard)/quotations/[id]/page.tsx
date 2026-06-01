@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/components/shared/page-header'
 import { QuotationBuilder } from '@/components/quotations/quotation-builder'
+import { GoldPriceTicker } from '@/components/dashboard/gold-price-ticker'
 import { useQuery } from '@tanstack/react-query'
 import { quotationsAPI } from '@/lib/api'
 
@@ -38,6 +39,7 @@ export default function QuotationDetailPage() {
 
   return (
     <div className="space-y-6 max-w-5xl">
+      <GoldPriceTicker />
       <PageHeader
         title="Quotation Builder"
         actions={

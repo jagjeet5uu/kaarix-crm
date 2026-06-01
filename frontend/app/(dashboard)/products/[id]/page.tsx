@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useRef } from 'react'
-import { ArrowLeft, Upload, ImageIcon, FileText, Gem, Pencil } from 'lucide-react'
+import { ArrowLeft, Upload, ImageIcon, FileText, Gem, Pencil, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,8 +24,10 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { PageHeader } from '@/components/shared/page-header'
+import { GoldPriceTicker } from '@/components/dashboard/gold-price-ticker'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProduct, useUpdateProduct, useUploadProductImage } from '@/hooks/use-products'
+import { useGoldPrices } from '@/hooks/use-dashboard'
 import { formatCurrency, formatDate, formatWeight } from '@/lib/utils'
 import { INVENTORY_STATUSES, PRODUCT_CATEGORIES, METAL_TYPES, METAL_PURITIES } from '@/lib/constants'
 import { toast } from 'sonner'
@@ -43,6 +45,30 @@ export default function ProductDetailPage() {
   const { data: product, isLoading } = useProduct(productId)
   const { mutate: updateProduct, isPending: updating } = useUpdateProduct(productId)
   const { mutate: uploadImage, isPending: uploadingImage } = useUploadProductImage(productId)
+  const { data: liveGoldData } = useGoldPrices()
+
+  // Compute live metal value from product's net_weight + metal_purity
+  const getLiveMetalValue = (): { value: number; rate: number; label: string } | null => {
+    if (!liveGoldData || !product?.net_weight) return null
+    const purity = (product.metal_purity || '').toLowerCase()
+    const weight = parseFloat(product.net_weight)
+    if (!weight) return null
+    // Gold karats
+    if (['24k', '22k', '18k', '14k'].includes(purity)) {
+      const rate = liveGoldData.gold?.per_gram?.[purity]
+      if (!rate) return null
+      return { value: Math.round(rate * weight), rate: Math.round(rate), label: purity.toUpperCase() + ' Gold' }
+    }
+    // Silver
+    if (purity === '925') {
+      const rate = liveGoldData.silver?.per_gram?.['999']
+      if (!rate) return null
+      return { value: Math.round(rate * weight), rate: Math.round(rate), label: '925 Silver' }
+    }
+    return null
+  }
+
+  const liveMetalValue = getLiveMetalValue()
 
   const handleStatusChange = (status: string) => {
     updateProduct({ inventory_status: status })
@@ -107,6 +133,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="space-y-6 max-w-5xl">
+      <GoldPriceTicker />
       <PageHeader
         title={product.item_name}
         description={product.sku ? `SKU: ${product.sku}` : 'No SKU assigned'}
@@ -204,20 +231,55 @@ export default function ProductDetailPage() {
                 <CardHeader>
                   <CardTitle className="text-sm font-semibold text-gray-700">Pricing & Weight</CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                  {[
-                    { label: 'Selling Price', value: formatCurrency(product.selling_price) },
-                    { label: 'Purchase Price', value: formatCurrency(product.purchase_price) },
-                    { label: 'Margin', value: product.margin ? `${product.margin}%` : '—' },
-                    { label: 'Gross Weight', value: formatWeight(product.gross_weight) },
-                    { label: 'Net Weight', value: formatWeight(product.net_weight) },
-                    { label: 'Diamond Weight', value: product.diamond_weight ? formatWeight(product.diamond_weight, 'ct') : '—' },
-                  ].map((item) => (
-                    <div key={item.label}>
-                      <p className="text-xs text-gray-400">{item.label}</p>
-                      <p className="font-medium">{item.value}</p>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                    {[
+                      { label: 'Selling Price', value: formatCurrency(product.selling_price) },
+                      { label: 'Purchase Price', value: formatCurrency(product.purchase_price) },
+                      { label: 'Margin', value: product.margin ? `${product.margin}%` : '—' },
+                      { label: 'Gross Weight', value: formatWeight(product.gross_weight) },
+                      { label: 'Net Weight', value: formatWeight(product.net_weight) },
+                      { label: 'Diamond Weight', value: product.diamond_weight ? formatWeight(product.diamond_weight, 'ct') : '—' },
+                    ].map((item) => (
+                      <div key={item.label}>
+                        <p className="text-xs text-gray-400">{item.label}</p>
+                        <p className="font-medium">{item.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Live metal value strip */}
+                  {liveMetalValue && (
+                    <div className="bg-amber-950/90 rounded-lg px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                        </span>
+                        <span className="text-amber-300 text-xs font-semibold">Live Metal Value</span>
+                      </div>
+                      <div className="text-xs text-amber-400">
+                        {liveMetalValue.label} @ ₹{liveMetalValue.rate.toLocaleString('en-IN')}/g
+                        {' × '}{parseFloat(product.net_weight).toFixed(2)}g
+                      </div>
+                      <div className="text-amber-100 font-bold text-sm tabular-nums">
+                        = ₹{liveMetalValue.value.toLocaleString('en-IN')}
+                      </div>
+                      {product.selling_price && (
+                        (() => {
+                          const diff = Number(product.selling_price) - liveMetalValue.value
+                          const pct = ((diff / liveMetalValue.value) * 100).toFixed(1)
+                          const up = diff >= 0
+                          return (
+                            <div className={`flex items-center gap-1 text-xs font-medium ${up ? 'text-green-400' : 'text-red-400'}`}>
+                              {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                              {up ? '+' : ''}{pct}% above metal cost
+                            </div>
+                          )
+                        })()
+                      )}
                     </div>
-                  ))}
+                  )}
                 </CardContent>
               </Card>
 

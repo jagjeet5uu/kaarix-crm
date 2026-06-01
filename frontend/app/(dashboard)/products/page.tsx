@@ -14,6 +14,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { PageHeader } from '@/components/shared/page-header'
+import { GoldPriceTicker } from '@/components/dashboard/gold-price-ticker'
 import { ProductGrid } from '@/components/products/product-grid'
 import { ProductFiltersPanel, ProductFilters } from '@/components/products/product-filters'
 import { DataTable, Column } from '@/components/shared/data-table'
@@ -68,6 +69,7 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
+      <GoldPriceTicker />
       <PageHeader
         title="Product Catalog"
         description={`${total} products`}

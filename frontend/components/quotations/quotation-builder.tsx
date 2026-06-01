@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Plus, Trash2, ExternalLink, Search, ChevronDown, ChevronUp, Upload, MessageCircle, Clipboard, Mail, ImageIcon } from 'lucide-react'
+import { Plus, Trash2, ExternalLink, Search, ChevronDown, ChevronUp, Upload, MessageCircle, Clipboard, Mail, ImageIcon, Zap, TrendingUp, TrendingDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,7 @@ import { Quotation, QuotationItem, Product } from '@/types'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { quotationsAPI, productsAPI } from '@/lib/api'
 import { useDebounce } from '@/hooks/use-debounce'
+import { useGoldPrices } from '@/hooks/use-dashboard'
 import { toast } from 'sonner'
 
 interface QuotationBuilderProps {
@@ -30,11 +31,41 @@ const CARAT_OPTIONS = [
 export function QuotationBuilder({ quotation }: QuotationBuilderProps) {
   const queryClient = useQueryClient()
 
+  // ── Live Gold Prices from API ─────────────────────────────────────────────
+  const { data: liveGoldData, isLoading: liveLoading } = useGoldPrices()
+  const liveGold24k = liveGoldData?.gold?.per_gram?.['24k']
+  const liveSilver = liveGoldData?.silver?.per_gram?.['999']
+  const liveGoldChangePct = liveGoldData?.gold?.change_pct ?? 0
+  const liveGoldChangeUp = liveGoldChangePct > 0
+
   // ── Gold Rate Reference Card ──────────────────────────────────────────────
   const [showGoldRate, setShowGoldRate] = useState(false)
   const [goldRate24k, setGoldRate24k] = useState('')
   const [silverRate, setSilverRate] = useState('')
   const [platinumRate, setPlatinumRate] = useState('')
+  const [liveRateApplied, setLiveRateApplied] = useState(false)
+
+  // Auto-populate from live data on first load (only if user hasn't typed anything)
+  useEffect(() => {
+    if (!liveRateApplied && liveGold24k && !goldRate24k) {
+      setGoldRate24k(String(Math.round(liveGold24k)))
+      if (liveSilver && !silverRate) {
+        setSilverRate(String(Math.round(liveSilver)))
+      }
+      setLiveRateApplied(true)
+    }
+  }, [liveGold24k, liveSilver, liveRateApplied, goldRate24k, silverRate])
+
+  const applyLiveRates = () => {
+    if (liveGold24k) {
+      setGoldRate24k(String(Math.round(liveGold24k)))
+    }
+    if (liveSilver) {
+      setSilverRate(String(Math.round(liveSilver)))
+    }
+    setShowGoldRate(true)
+    toast.success('Live rates applied')
+  }
 
   const derived22k = goldRate24k ? Math.round(parseFloat(goldRate24k) * (22 / 24)) : null
   const derived18k = goldRate24k ? Math.round(parseFloat(goldRate24k) * (18 / 24)) : null
@@ -375,28 +406,84 @@ export function QuotationBuilder({ quotation }: QuotationBuilderProps) {
       {/* Gold Rate Reference Card */}
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <span className="text-amber-500">✦</span> Today&apos;s Gold Rate
             </CardTitle>
-            <button
-              onClick={() => setShowGoldRate(!showGoldRate)}
-              className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 font-medium"
-            >
-              {showGoldRate ? (
-                <>Hide <ChevronUp className="h-3 w-3" /></>
-              ) : (
-                <>Set Rates <ChevronDown className="h-3 w-3" /></>
+            <div className="flex items-center gap-2">
+              {/* Live rate pill */}
+              {liveGold24k && (
+                <div className="flex items-center gap-1.5 bg-amber-950 rounded-full px-3 py-1">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                  </span>
+                  <span className="text-amber-200 text-xs font-bold tabular-nums">
+                    24K ₹{Math.round(liveGold24k).toLocaleString('en-IN')}/g
+                  </span>
+                  <span className={`text-xs font-medium flex items-center gap-0.5 ${liveGoldChangeUp ? 'text-green-400' : 'text-red-400'}`}>
+                    {liveGoldChangeUp ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
+                    {liveGoldChangeUp ? '+' : ''}{liveGoldChangePct.toFixed(2)}%
+                  </span>
+                </div>
               )}
-            </button>
+              {liveLoading && (
+                <div className="h-6 w-32 bg-amber-100 rounded-full animate-pulse" />
+              )}
+              {/* Use Live Rate button */}
+              {liveGold24k && (
+                <button
+                  onClick={applyLiveRates}
+                  className="flex items-center gap-1 text-xs bg-amber-50 border border-amber-300 text-amber-700 hover:bg-amber-100 font-medium px-2 py-1 rounded-md transition-colors"
+                >
+                  <Zap className="h-3 w-3" /> Use Live Rate
+                </button>
+              )}
+              <button
+                onClick={() => setShowGoldRate(!showGoldRate)}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 font-medium"
+              >
+                {showGoldRate ? (
+                  <>Hide <ChevronUp className="h-3 w-3" /></>
+                ) : (
+                  <>Edit <ChevronDown className="h-3 w-3" /></>
+                )}
+              </button>
+            </div>
           </div>
         </CardHeader>
         {showGoldRate && (
           <CardContent className="space-y-4">
+            {/* Live reference strip */}
+            {liveGoldData && (
+              <div className="bg-amber-950/90 rounded-lg px-4 py-2.5 flex flex-wrap items-center gap-x-5 gap-y-1.5">
+                <span className="text-amber-300 text-xs font-semibold">🥇 Live Gold/g</span>
+                {(['24k', '22k', '18k'] as const).map((k) => (
+                  <span key={k} className="text-xs">
+                    <span className="text-amber-500">{k.toUpperCase()} </span>
+                    <span className="text-amber-100 font-bold tabular-nums">
+                      ₹{Math.round(liveGoldData.gold.per_gram[k]).toLocaleString('en-IN')}
+                    </span>
+                  </span>
+                ))}
+                <span className="text-amber-500 text-xs">|</span>
+                <span className="text-xs">
+                  <span className="text-gray-400">🥈 Silver </span>
+                  <span className="text-amber-100 font-bold tabular-nums">
+                    ₹{Math.round(liveSilver ?? 0).toLocaleString('en-IN')}/g
+                  </span>
+                </span>
+              </div>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {/* 24K — manual entry */}
+              {/* 24K — manual entry, pre-filled from live */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600">24K Rate / gram (₹)</label>
+                <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                  24K Rate / gram (₹)
+                  {liveGold24k && goldRate24k === String(Math.round(liveGold24k)) && (
+                    <span className="text-green-600 text-[10px] font-normal">● live</span>
+                  )}
+                </label>
                 <Input
                   type="number"
                   min="0"
@@ -427,9 +514,14 @@ export function QuotationBuilder({ quotation }: QuotationBuilderProps) {
                   {derived14k !== null ? `₹${derived14k.toLocaleString('en-IN')}` : <span className="text-gray-400">auto</span>}
                 </div>
               </div>
-              {/* Silver — manual */}
+              {/* Silver — pre-filled from live */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-600">925 Silver / gram (₹)</label>
+                <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                  925 Silver / gram (₹)
+                  {liveSilver && silverRate === String(Math.round(liveSilver)) && (
+                    <span className="text-green-600 text-[10px] font-normal">● live</span>
+                  )}
+                </label>
                 <Input
                   type="number"
                   min="0"
@@ -453,8 +545,8 @@ export function QuotationBuilder({ quotation }: QuotationBuilderProps) {
               </div>
             </div>
             <p className="text-xs text-gray-400">
-              22K, 18K, and 14K rates are calculated automatically from the 24K rate. Silver and
-              Platinum are entered manually.
+              Gold rates are pre-filled from live GoldAPI data. 22K / 18K / 14K are calculated
+              automatically from the 24K rate. Override any field manually.
             </p>
           </CardContent>
         )}

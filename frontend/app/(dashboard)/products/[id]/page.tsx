@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useRef } from 'react'
-import { ArrowLeft, Upload, ImageIcon, FileText, Gem, Pencil, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { ArrowLeft, Upload, ImageIcon, FileText, Gem, Pencil, TrendingUp, TrendingDown, Zap, Calculator, ChevronDown, ChevronUp } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,6 +42,13 @@ export default function ProductDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [editData, setEditData] = useState<Record<string, any>>({})
 
+  // Price calculator state
+  const [showCalc, setShowCalc]     = useState(false)
+  const [makingPct, setMakingPct]   = useState('')
+  const [makingFlat, setMakingFlat] = useState('')
+  const [stoneCost, setStoneCost]   = useState('')
+  const [gstPct, setGstPct]         = useState('3')
+
   const { data: product, isLoading } = useProduct(productId)
   const { mutate: updateProduct, isPending: updating } = useUpdateProduct(productId)
   const { mutate: uploadImage, isPending: uploadingImage } = useUploadProductImage(productId)
@@ -69,6 +76,26 @@ export default function ProductDetailPage() {
   }
 
   const liveMetalValue = getLiveMetalValue()
+
+  // Derived calculator values
+  const metalCost   = liveMetalValue?.value ?? 0
+  const making      = makingPct ? Math.round(metalCost * (parseFloat(makingPct) / 100)) : parseFloat(makingFlat) || 0
+  const stone       = parseFloat(stoneCost) || 0
+  const preTax      = metalCost + making + stone
+  const gst         = Math.round(preTax * ((parseFloat(gstPct) || 0) / 100))
+  const suggested   = preTax + gst
+
+  const formatINR = (val: number) =>
+    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val)
+
+  const applyPrice = () => {
+    if (suggested > 0) {
+      updateProduct({ selling_price: suggested }, {
+        onSuccess: () => toast.success(`Selling price updated to ${formatINR(suggested)}`),
+        onError:   () => toast.error('Failed to update price'),
+      })
+    }
+  }
 
   const handleStatusChange = (status: string) => {
     updateProduct({ inventory_status: status })
@@ -282,6 +309,122 @@ export default function ProductDetailPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Live Price Calculator */}
+              {liveMetalValue && (
+                <Card className="border-amber-200">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calculator className="h-4 w-4 text-amber-600" />
+                        <CardTitle className="text-sm font-semibold text-gray-700">Live Price Calculator</CardTitle>
+                      </div>
+                      <button
+                        onClick={() => setShowCalc(!showCalc)}
+                        className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 font-medium"
+                      >
+                        {showCalc ? <><ChevronUp className="h-3.5 w-3.5" /> Hide</> : <><ChevronDown className="h-3.5 w-3.5" /> Open Calculator</>}
+                      </button>
+                    </div>
+                    {/* Always-visible metal cost row */}
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <span className="text-xs text-gray-500">Metal cost today:</span>
+                      <span className="text-sm font-bold text-amber-700 tabular-nums">{formatINR(metalCost)}</span>
+                      <span className="text-xs text-gray-400">({liveMetalValue.label} · {formatINR(liveMetalValue.rate)}/g × {parseFloat(product.net_weight).toFixed(3)}g)</span>
+                    </div>
+                  </CardHeader>
+
+                  {showCalc && (
+                    <CardContent className="space-y-4 pt-0">
+                      {/* Making charges */}
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Making Charges</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-xs text-gray-500">Percentage (%)</label>
+                            <input
+                              type="number" min="0" max="100" step="0.1"
+                              placeholder="e.g. 12"
+                              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                              value={makingPct}
+                              onChange={(e) => { setMakingPct(e.target.value); setMakingFlat('') }}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-gray-500">Flat Amount (₹)</label>
+                            <input
+                              type="number" min="0"
+                              placeholder="or flat ₹"
+                              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                              value={makingFlat}
+                              onChange={(e) => { setMakingFlat(e.target.value); setMakingPct('') }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Stone + GST */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs text-gray-500">Stone / Diamond Cost (₹)</label>
+                          <input
+                            type="number" min="0"
+                            placeholder="0"
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                            value={stoneCost}
+                            onChange={(e) => setStoneCost(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-gray-500">GST %</label>
+                          <select
+                            value={gstPct}
+                            onChange={(e) => setGstPct(e.target.value)}
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                          >
+                            <option value="0">0%</option>
+                            <option value="1.5">1.5%</option>
+                            <option value="3">3% — Gold/Silver</option>
+                            <option value="5">5%</option>
+                            <option value="12">12%</option>
+                            <option value="18">18%</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Breakdown */}
+                      <div className="bg-gray-50 rounded-xl border border-gray-200 divide-y divide-gray-200 text-sm overflow-hidden">
+                        {[
+                          { label: `Metal cost (${parseFloat(product.net_weight).toFixed(3)}g)`, value: metalCost },
+                          { label: `Making ${makingPct ? `(${makingPct}%)` : makingFlat ? '(flat)' : ''}`, value: making },
+                          ...(stone > 0 ? [{ label: 'Stone cost', value: stone }] : []),
+                          { label: `GST (${gstPct}%)`, value: gst },
+                        ].map((row) => (
+                          <div key={row.label} className="flex justify-between items-center px-4 py-2.5 text-gray-600">
+                            <span>{row.label}</span>
+                            <span className="tabular-nums font-medium">{row.value > 0 ? formatINR(row.value) : '—'}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between items-center px-4 py-3 bg-white font-bold text-gray-900">
+                          <span>Suggested Selling Price</span>
+                          <span className="text-amber-700 text-base tabular-nums">{suggested > 0 ? formatINR(suggested) : '—'}</span>
+                        </div>
+                      </div>
+
+                      {suggested > 0 && (
+                        <Button
+                          onClick={applyPrice}
+                          disabled={updating}
+                          className="w-full bg-amber-600 hover:bg-amber-700 gap-2 h-11"
+                        >
+                          <Zap className="h-4 w-4" />
+                          {updating ? 'Updating...' : `Update Selling Price to ${formatINR(suggested)}`}
+                        </Button>
+                      )}
+                    </CardContent>
+                  )}
+                </Card>
+              )}
 
               {product.description && (
                 <Card>

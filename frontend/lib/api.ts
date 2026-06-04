@@ -90,6 +90,10 @@ export const productsAPI = {
   available: () => api.get('/products/available/'),
   missingSku: () => api.get('/products/missing_sku/'),
   missingCertification: () => api.get('/products/missing_certification/'),
+  repricePreview: (params: { making_pct?: number; gst_pct?: number }) =>
+    api.get('/products/reprice/', { params }),
+  repriceConfirm: (data: { making_pct?: number; gst_pct?: number }) =>
+    api.post('/products/reprice/', data),
 }
 
 export const reservationsAPI = {

@@ -119,6 +119,106 @@ class ProductViewSet(viewsets.ModelViewSet):
         serializer = ProductListSerializer(products, many=True, context={'request': request})
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get', 'post'])
+    def reprice(self, request):
+        """
+        GET  → preview what prices would change (dry-run).
+        POST → apply the new prices to all eligible products.
+
+        Query/body params:
+          making_pct  (float, default 0)  — making charges as % of metal cost
+          gst_pct     (float, default 3)  — GST %
+        """
+        import decimal
+        from django.core.cache import cache
+
+        prices = cache.get('goldapi_prices_daily')
+        if not prices:
+            return Response(
+                {'error': 'Live gold prices are not cached yet. They refresh every morning at 9 AM IST. '
+                          'Try hitting the gold-prices endpoint first to seed the cache.'},
+                status=503,
+            )
+
+        def _param(key, default):
+            val = (request.data.get(key) if request.method == 'POST'
+                   else request.query_params.get(key))
+            try:
+                return decimal.Decimal(str(val)) if val is not None else decimal.Decimal(str(default))
+            except Exception:
+                return decimal.Decimal(str(default))
+
+        making_pct = _param('making_pct', 0)
+        gst_pct    = _param('gst_pct', 3)
+
+        PURITY_MAP = {
+            '24k': ('gold',   '24k'),
+            '22k': ('gold',   '22k'),
+            '18k': ('gold',   '18k'),
+            '14k': ('gold',   '14k'),
+            '925': ('silver', '999'),
+        }
+
+        products = (
+            Product.objects
+            .filter(net_weight__isnull=False, metal_purity__in=PURITY_MAP.keys(), is_active=True)
+            .exclude(inventory_status='sold')
+            .values('id', 'item_name', 'sku', 'metal_purity', 'net_weight',
+                    'selling_price', 'making_charges')
+        )
+
+        changes = []
+        for p in products:
+            metal, key = PURITY_MAP[p['metal_purity']]
+            try:
+                rate = decimal.Decimal(str(prices[metal]['per_gram'][key]))
+            except (KeyError, TypeError):
+                continue
+
+            net_w      = decimal.Decimal(str(p['net_weight']))
+            metal_cost = rate * net_w
+
+            # Use product's stored making_charges (flat ₹) if set, else % of metal cost
+            if p['making_charges']:
+                making = decimal.Decimal(str(p['making_charges']))
+            else:
+                making = metal_cost * making_pct / 100
+
+            pre_tax   = metal_cost + making
+            gst_amt   = pre_tax * gst_pct / 100
+            new_price = round(pre_tax + gst_amt, 2)
+
+            changes.append({
+                'id':           p['id'],
+                'item_name':    p['item_name'],
+                'sku':          p['sku'] or '—',
+                'metal_purity': p['metal_purity'],
+                'net_weight':   float(net_w),
+                'rate':         float(rate),
+                'old_price':    float(p['selling_price']) if p['selling_price'] else None,
+                'new_price':    float(new_price),
+            })
+
+        if request.method == 'GET':
+            return Response({
+                'count':       len(changes),
+                'making_pct':  float(making_pct),
+                'gst_pct':     float(gst_pct),
+                'changes':     changes,
+            })
+
+        # POST — apply
+        ids_prices = {c['id']: c['new_price'] for c in changes}
+        updated = 0
+        for prod_id, new_price in ids_prices.items():
+            Product.objects.filter(id=prod_id).update(selling_price=new_price)
+            updated += 1
+
+        return Response({
+            'updated': updated,
+            'message': f'{updated} product(s) repriced to today\'s live gold rates.',
+        })
+
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def import_csv(self, request):
         csv_file = request.FILES.get('file')

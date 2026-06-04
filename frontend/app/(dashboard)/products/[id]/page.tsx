@@ -206,19 +206,15 @@ export default function ProductDetailPage() {
 
         {/* Details tab */}
         <TabsContent value="details" className="mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Primary image */}
-            <div className="md:col-span-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+            {/* ── Left col: image + quick info ── */}
+            <div className="space-y-4">
+              {/* Image */}
               <Card className="overflow-hidden">
                 <div className="aspect-square bg-gray-50 flex items-center justify-center relative">
                   {primaryImage ? (
-                    <Image
-                      src={primaryImage.file_url}
-                      alt={product.item_name}
-                      fill
-                      className="object-cover"
-                      sizes="400px"
-                    />
+                    <Image src={primaryImage.file_url} alt={product.item_name} fill className="object-cover" sizes="400px" />
                   ) : (
                     <div className="flex flex-col items-center text-gray-300">
                       <Gem className="h-16 w-16" />
@@ -227,88 +223,144 @@ export default function ProductDetailPage() {
                   )}
                 </div>
               </Card>
-            </div>
 
-            {/* Product info */}
-            <div className="md:col-span-2 space-y-4">
+              {/* Metal chips */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm font-semibold text-gray-700">Product Information</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                  {[
-                    { label: 'Category', value: product.category },
-                    { label: 'Subcategory', value: product.subcategory },
-                    { label: 'Metal Type', value: product.metal_type },
-                    { label: 'Metal Purity', value: product.metal_purity },
-                    { label: 'Stone Type', value: product.stone_type },
-                    { label: 'Certification', value: product.certification_type },
-                    { label: 'Cert. Number', value: product.certification_number },
-                    { label: 'Date of Purchase', value: formatDate(product.date_of_purchase) },
-                  ].map((item) => (
-                    <div key={item.label}>
-                      <p className="text-xs text-gray-400">{item.label}</p>
-                      <p className="font-medium capitalize">{item.value || '—'}</p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm font-semibold text-gray-700">Pricing & Weight</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                    {[
-                      { label: 'Selling Price', value: formatCurrency(product.selling_price) },
-                      { label: 'Purchase Price', value: formatCurrency(product.purchase_price) },
-                      { label: 'Margin', value: product.margin ? `${product.margin}%` : '—' },
-                      { label: 'Gross Weight', value: formatWeight(product.gross_weight) },
-                      { label: 'Net Weight', value: formatWeight(product.net_weight) },
-                      { label: 'Diamond Weight', value: product.diamond_weight ? formatWeight(product.diamond_weight, 'ct') : '—' },
-                    ].map((item) => (
-                      <div key={item.label}>
-                        <p className="text-xs text-gray-400">{item.label}</p>
-                        <p className="font-medium">{item.value}</p>
-                      </div>
-                    ))}
+                <CardContent className="pt-4 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {product.metal_type && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 capitalize">
+                        {product.metal_type === 'gold' ? '🥇' : product.metal_type === 'silver' ? '🥈' : '💍'} {product.metal_type}
+                      </span>
+                    )}
+                    {product.metal_purity && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-600 text-white uppercase">
+                        {product.metal_purity}
+                      </span>
+                    )}
+                    {product.category && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 capitalize">
+                        {product.category.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                    {product.stone_type && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 capitalize">
+                        💎 {product.stone_type}
+                      </span>
+                    )}
                   </div>
-
-                  {/* Live metal value strip */}
-                  {liveMetalValue && (
-                    <div className="bg-amber-950/90 rounded-lg px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
-                        </span>
-                        <span className="text-amber-300 text-xs font-semibold">Live Metal Value</span>
-                      </div>
-                      <div className="text-xs text-amber-400">
-                        {liveMetalValue.label} @ ₹{liveMetalValue.rate.toLocaleString('en-IN')}/g
-                        {' × '}{parseFloat(product.net_weight).toFixed(2)}g
-                      </div>
-                      <div className="text-amber-100 font-bold text-sm tabular-nums">
-                        = ₹{liveMetalValue.value.toLocaleString('en-IN')}
-                      </div>
-                      {product.selling_price && (
-                        (() => {
-                          const diff = Number(product.selling_price) - liveMetalValue.value
-                          const pct = ((diff / liveMetalValue.value) * 100).toFixed(1)
-                          const up = diff >= 0
-                          return (
-                            <div className={`flex items-center gap-1 text-xs font-medium ${up ? 'text-green-400' : 'text-red-400'}`}>
-                              {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                              {up ? '+' : ''}{pct}% above metal cost
-                            </div>
-                          )
-                        })()
+                  {product.certification_type && product.certification_type !== 'none' && (
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 uppercase">
+                        ✓ {product.certification_type}
+                      </span>
+                      {product.certification_number && (
+                        <span className="text-xs text-gray-500 font-mono">{product.certification_number}</span>
                       )}
+                    </div>
+                  )}
+                  {product.date_of_purchase && (
+                    <div>
+                      <p className="text-xs text-gray-400">Date of Purchase</p>
+                      <p className="text-sm font-medium text-gray-700">{formatDate(product.date_of_purchase)}</p>
+                    </div>
+                  )}
+                  {product.subcategory && (
+                    <div>
+                      <p className="text-xs text-gray-400">Subcategory</p>
+                      <p className="text-sm font-medium text-gray-700 capitalize">{product.subcategory}</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
+            </div>
+
+            {/* ── Right cols: pricing + weight + calculator ── */}
+            <div className="md:col-span-2 space-y-4">
+
+              {/* Pricing highlight row */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white border-2 border-amber-200 rounded-xl p-4">
+                  <p className="text-xs text-gray-400 font-medium">Selling Price</p>
+                  <p className="text-xl font-bold text-amber-700 tabular-nums mt-0.5">
+                    {product.selling_price ? formatINR(Number(product.selling_price)) : '—'}
+                  </p>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-xs text-gray-400 font-medium">Purchase Price</p>
+                  <p className="text-xl font-bold text-gray-800 tabular-nums mt-0.5">
+                    {product.purchase_price ? formatINR(Number(product.purchase_price)) : '—'}
+                  </p>
+                </div>
+                <div className={`rounded-xl p-4 border-2 ${Number(product.margin) > 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                  <p className="text-xs text-gray-400 font-medium">Margin</p>
+                  <p className={`text-xl font-bold tabular-nums mt-0.5 ${Number(product.margin) > 0 ? 'text-green-700' : 'text-gray-400'}`}>
+                    {product.margin ? `${Number(product.margin).toFixed(2)}%` : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Weight row */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold text-gray-700">Weight</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    {[
+                      { label: 'Gross Weight', value: product.gross_weight ? `${parseFloat(product.gross_weight).toFixed(3)} g` : null },
+                      { label: 'Net Weight',   value: product.net_weight   ? `${parseFloat(product.net_weight).toFixed(3)} g`   : null },
+                      { label: 'Diamond Wt.',  value: product.diamond_weight ? `${parseFloat(product.diamond_weight).toFixed(3)} ct` : null },
+                    ].map((item) => (
+                      <div key={item.label} className={`rounded-lg p-3 ${item.value ? 'bg-gray-50 border border-gray-200' : 'bg-gray-50/50 border border-dashed border-gray-200'}`}>
+                        <p className="text-xs text-gray-400">{item.label}</p>
+                        {item.value
+                          ? <p className="text-base font-bold text-gray-900 tabular-nums mt-0.5">{item.value}</p>
+                          : <p className="text-sm text-gray-300 mt-0.5">Not set</p>
+                        }
+                      </div>
+                    ))}
+                  </div>
+                  {!product.net_weight && !product.gross_weight && (
+                    <p className="text-xs text-amber-600 mt-3 flex items-center gap-1">
+                      <Pencil className="h-3 w-3" /> Click <strong>Edit</strong> to add weight — required for live pricing calculator.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Live metal value strip */}
+              {liveMetalValue && (
+                <div className="bg-amber-950/90 rounded-xl px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                    </span>
+                    <span className="text-amber-300 text-xs font-semibold">Live Metal Value</span>
+                  </div>
+                  <div className="text-xs text-amber-400">
+                    {liveMetalValue.label} @ ₹{liveMetalValue.rate.toLocaleString('en-IN')}/g
+                    {' × '}{parseFloat(product.net_weight).toFixed(3)}g
+                  </div>
+                  <div className="text-amber-100 font-bold text-sm tabular-nums">
+                    = ₹{liveMetalValue.value.toLocaleString('en-IN')}
+                  </div>
+                  {product.selling_price && (
+                    (() => {
+                      const diff = Number(product.selling_price) - liveMetalValue.value
+                      const pct = ((diff / liveMetalValue.value) * 100).toFixed(1)
+                      const up = diff >= 0
+                      return (
+                        <div className={`flex items-center gap-1 text-xs font-medium ${up ? 'text-green-400' : 'text-red-400'}`}>
+                          {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                          {up ? '+' : ''}{pct}% above metal cost
+                        </div>
+                      )
+                    })()
+                  )}
+                </div>
+              )}
 
               {/* Live Price Calculator */}
               {liveMetalValue && (
@@ -428,11 +480,13 @@ export default function ProductDetailPage() {
 
               {product.description && (
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm font-semibold text-gray-700">Description</CardTitle>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-gray-700">Description / Notes</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-gray-600">{product.description}</p>
+                    <p className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 rounded-lg p-3 font-mono leading-relaxed border border-gray-100">
+                      {product.description}
+                    </p>
                   </CardContent>
                 </Card>
               )}

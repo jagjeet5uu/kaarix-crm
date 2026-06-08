@@ -1,308 +1,291 @@
-# Jewelry Brand CRM
+# Kaarix CRM — Open-Source Jewelry & Gold Brand CRM
 
-A custom web-based CRM for a gold/jewelry brand built with Next.js, Django REST Framework, and PostgreSQL.
+> A full-featured, production-ready **CRM built specifically for jewelry brands, gold retailers, and luxury jewellery businesses**. Manage customers, leads, products, reservations, quotations, after-sales service, and live gold/silver prices — all in one place.
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 14, React, Tailwind CSS, shadcn/ui |
-| Backend | Python 3.11, Django 4.2, Django REST Framework |
-| Database | PostgreSQL 15 |
-| Queue | Celery 5, Redis 7 |
-| Storage | Google Cloud Storage |
-| Hosting | Google Cloud Run |
-| Secrets | Google Secret Manager |
-| Accounting | Zoho Books API |
-
-## Project Structure
-
-```
-jewelry-crm/
-├── backend/              # Django REST API
-│   ├── config/           # Settings, URLs, Celery config
-│   └── apps/
-│       ├── accounts/     # Auth, users, roles
-│       ├── customers/    # Customer management
-│       ├── leads/        # Lead pipeline + activities + tasks
-│       ├── products/     # Product catalog, images, certificates, CSV import
-│       ├── reservations/ # Product reservation system
-│       ├── quotations/   # Quotation builder
-│       ├── after_sales/  # Service/repair requests
-│       ├── zoho_integration/ # Zoho Books sync
-│       ├── reports/      # Dashboard + report endpoints
-│       └── audit_logs/   # Action audit trail
-├── frontend/             # Next.js App Router
-│   ├── app/
-│   │   ├── (auth)/       # Login page
-│   │   └── (dashboard)/  # All CRM pages
-│   ├── components/       # React components
-│   ├── lib/              # API client, utilities
-│   ├── hooks/            # Custom React hooks
-│   └── types/            # TypeScript types
-├── docker-compose.yml    # Local development
-├── deploy/               # GCP deployment configs
-└── README.md
-```
-
-## Quick Start (Local Development)
-
-### Prerequisites
-- Docker & Docker Compose
-- Node.js 20+ (for local frontend dev)
-- Python 3.11+ (for local backend dev)
-
-### 1. Clone and start with Docker Compose
-
-```bash
-cd "new crm"
-docker-compose up --build
-```
-
-This starts:
-- PostgreSQL on port 5432
-- Redis on port 6379
-- Django API on http://localhost:8000
-- Celery worker + beat scheduler
-- Next.js frontend on http://localhost:3000
-
-### 2. Access the application
-
-- **Frontend**: http://localhost:3000
-- **API**: http://localhost:8000/api/
-- **API Docs (Swagger)**: http://localhost:8000/api/docs/
-- **Django Admin**: http://localhost:8000/admin/
-
-### 3. Default credentials
-
-| Username | Password | Role |
-|----------|----------|------|
-| admin | admin123 | Admin |
-| sales_mgr | admin123 | Sales Manager |
-| salesperson | admin123 | Salesperson |
-| inv_manager | admin123 | Inventory Manager |
-| accounts | admin123 | Accounts |
-| service | admin123 | Service Staff |
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
+[![Django](https://img.shields.io/badge/Django-4.2-092E20?logo=django)](https://djangoproject.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?logo=postgresql)](https://postgresql.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## Local Development (Without Docker)
+## ✨ Features
+
+| Module | Description |
+|--------|-------------|
+| 📊 **Dashboard** | Live KPIs — active leads, inventory value, follow-ups, reservations expiring, service requests |
+| 👥 **Customer Management** | Full customer profiles with preferences, sizes, budgets, birthday/anniversary, lead history |
+| 🎯 **Lead Pipeline (Kanban)** | Drag-and-drop Kanban board, follow-up scheduling, overdue alerts, activity log |
+| 💎 **Product Catalog** | Gold/silver/platinum inventory with images, certifications, weight, purity, live pricing |
+| 📦 **Reservations** | Reserve products for customers, advance tracking, auto-expiry via Celery |
+| 📋 **Quotation Builder** | Line-item quotations with live gold price calculator, WhatsApp/email/clipboard share |
+| 🔧 **After-Sales Service** | Repair, resize, polish, stone replacement — full service request workflow |
+| 📈 **Live Gold Prices** | Real-time 24K/22K/18K/14K gold + silver rates with **India domestic pricing** (import duty + GST applied) |
+| 📤 **Zoho Books Integration** | Two-way sync — items, contacts, invoices, estimates, payments |
+| 📁 **CSV Import** | Bulk import products from Zoho Books CSV export |
+| 🔔 **Notifications** | Bell icon shows overdue follow-ups and today's tasks in real time |
+| 👤 **Role-Based Access** | Admin, Sales Manager, Salesperson, Inventory Manager, Accounts, Service Staff |
+| 📝 **Audit Logs** | Every stage change, product status update, and reservation logged |
+| 🏷️ **Dynamic Pricing** | Per-product live price calculator + bulk reprice all products at today's gold rate |
+
+---
+
+## 🖼️ Screenshots
+
+> Dashboard with live gold ticker, Kanban lead pipeline, product catalog with purity chips, quotation builder with price breakdown calculator.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Next.js 14 (App Router), React 18, Tailwind CSS, shadcn/ui, TanStack Query |
+| **Backend** | Python 3.11, Django 4.2, Django REST Framework, SimpleJWT |
+| **Database** | PostgreSQL 15 |
+| **Queue** | Celery 5 + Redis 7 |
+| **Storage** | Google Cloud Storage (product images, certificates, repair photos) |
+| **Hosting** | Google Cloud Run (containerised) |
+| **Accounting** | Zoho Books API v3 |
+| **Gold Prices** | GoldAPI.io (cached daily at 9 AM IST, India premium applied) |
+
+---
+
+## 🚀 Quick Start (Docker)
+
+```bash
+git clone https://github.com/jagjeet5uu/kaarix-crm.git
+cd kaarix-crm
+cp backend/.env.example backend/.env   # fill in your secrets
+docker-compose up --build
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Django API | http://localhost:8000/api/ |
+| Swagger Docs | http://localhost:8000/api/docs/ |
+| Django Admin | http://localhost:8000/admin/ |
+
+### Default login credentials
+
+| Username | Password | Role |
+|----------|----------|------|
+| `admin` | `admin123` | Admin |
+| `sales_mgr` | `admin123` | Sales Manager |
+| `salesperson` | `admin123` | Salesperson |
+| `inv_manager` | `admin123` | Inventory Manager |
+| `accounts` | `admin123` | Accounts |
+| `service` | `admin123` | Service Staff |
+
+---
+
+## 💻 Local Development (Without Docker)
 
 ### Backend
 
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
-# Copy environment variables
-cp .env.example .env
-# Edit .env with your local DB and Redis settings
-
-# Run migrations
+cp .env.example .env            # configure DB, Redis, GoldAPI key, Zoho credentials
 python manage.py migrate
-
-# Seed demo data
-python manage.py seed_data
-
-# Start development server
+python manage.py seed_data      # loads demo customers, leads, products
 python manage.py runserver
+```
 
-# In another terminal: start Celery worker
-celery -A config.celery worker --loglevel=info
-
-# In another terminal: start Celery beat
-celery -A config.celery beat --loglevel=info
+In separate terminals:
+```bash
+celery -A config.celery worker --loglevel=info   # background tasks
+celery -A config.celery beat   --loglevel=info   # scheduled jobs
 ```
 
 ### Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Copy environment variables
-cp .env.example .env.local
-# Edit NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Start development server
+cp .env.example .env.local      # set NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev
 ```
 
 ---
 
-## Importing Products from Zoho Books CSV
+## 🌟 Key Differentiators for Jewellery Businesses
 
-1. Go to **Products → Import CSV** in the CRM
-2. Upload the Zoho Books item export CSV
-3. Preview the mapped rows
-4. Click **Import** to start processing
-5. Track progress on the import summary screen
-
-The importer handles:
-- Normalizing inventory status from `CF.Inventory`
-- Normalizing certification values from `CF.Certification present?`
-- Detecting SOLD/Returned prefixes in item names
-- Missing SKU detection and tracking
-- Duplicate SKU detection
-- Price parsing (strips "INR " prefix)
+- **India-accurate gold prices** — applies 15% customs duty + 5% AIDC cess + 3% GST on top of international spot price so you see real MCX-comparable rates
+- **Karat-aware pricing** — 24K/22K/18K/14K rates auto-calculated; per-gram calculator for custom orders
+- **WhatsApp quotation sharing** — one-click sends a formatted estimate to the customer's WhatsApp
+- **Zoho Books sync** — keeps your accounting in sync without double entry
+- **Product lifecycle tracking** — Available → Reserved → Sold → Returned → Under Service
+- **Service request workflow** — before/after photos, assigned staff, delivery tracking
 
 ---
 
-## User Roles & Permissions
+## 📁 Project Structure
+
+```
+kaarix-crm/
+├── backend/                  # Django REST API
+│   ├── config/               # Settings, URLs, Celery config
+│   └── apps/
+│       ├── accounts/         # Auth, users, JWT, roles
+│       ├── customers/        # Customer profiles + preferences
+│       ├── leads/            # Lead pipeline, activities, tasks, Kanban
+│       ├── products/         # Catalog, images, certificates, CSV import
+│       ├── reservations/     # Reservation system with auto-expiry
+│       ├── quotations/       # Quotation builder + Zoho estimate/invoice
+│       ├── after_sales/      # Service & repair requests
+│       ├── zoho_integration/ # Zoho Books OAuth + sync
+│       ├── reports/          # Dashboard KPIs + live gold prices
+│       └── audit_logs/       # Action audit trail
+├── frontend/                 # Next.js 14 App Router
+│   ├── app/
+│   │   ├── (auth)/           # Login
+│   │   └── (dashboard)/      # All CRM pages
+│   ├── components/           # Reusable UI components
+│   ├── hooks/                # TanStack Query hooks
+│   ├── lib/                  # Axios API client, utilities
+│   └── types/                # TypeScript interfaces
+├── docker-compose.yml        # Local dev stack
+└── deploy/                   # GCP Cloud Run deployment configs
+```
+
+---
+
+## 🔑 Environment Variables
+
+Create `backend/.env` from `backend/.env.example`:
+
+```env
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/kaarixcrm
+
+# Django
+DJANGO_SECRET_KEY=your-secret-key
+DJANGO_SETTINGS_MODULE=config.settings.local
+
+# Redis / Celery
+REDIS_URL=redis://localhost:6379/0
+
+# Google Cloud Storage
+GCS_BUCKET_NAME=your-bucket
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+
+# GoldAPI.io (https://goldapi.io — free tier available)
+GOLDAPI_KEY=your-goldapi-key
+GOLD_INDIA_PREMIUM=1.2369   # adjust if duty rates change
+
+# Zoho Books
+ZOHO_CLIENT_ID=your-client-id
+ZOHO_CLIENT_SECRET=your-client-secret
+ZOHO_REFRESH_TOKEN=your-refresh-token
+ZOHO_ORGANIZATION_ID=your-org-id
+ZOHO_API_DOMAIN=https://www.zohoapis.in
+```
+
+---
+
+## 📡 API Endpoints (Key)
+
+```
+POST   /api/auth/login/                          Login (returns JWT)
+GET    /api/auth/me/                             Current user
+
+GET    /api/customers/                           List / search customers
+POST   /api/customers/                           Create customer
+
+GET    /api/leads/                               Lead list with filters
+POST   /api/leads/{id}/change_stage/             Move lead stage
+POST   /api/leads/{id}/close_won/                Mark won
+POST   /api/leads/{id}/close_lost/               Mark lost (with reason)
+GET    /api/leads/overdue_follow_ups/            Overdue follow-up list
+
+GET    /api/products/                            Product catalog
+POST   /api/products/import_csv/                 Bulk import from Zoho CSV
+GET    /api/products/reprice/                    Preview bulk reprice at live rate
+POST   /api/products/reprice/                    Apply bulk reprice
+
+POST   /api/reservations/                        Reserve a product
+POST   /api/reservations/{id}/cancel/            Cancel reservation
+POST   /api/reservations/{id}/extend/            Extend reservation date
+POST   /api/reservations/{id}/convert_to_sale/   Mark as sold
+
+GET    /api/reports/gold-prices/                 Live gold & silver rates (INR)
+GET    /api/reports/dashboard/                   Dashboard KPIs
+
+POST   /api/zoho/sync/items/                     Sync products from Zoho Books
+POST   /api/zoho/sync/contacts/                  Sync customers from Zoho Books
+```
+
+Full Swagger docs at `/api/docs/` when running locally.
+
+---
+
+## 👤 Role Permissions
 
 | Module | Admin | Sales Mgr | Salesperson | Inv. Mgr | Accounts | Service |
-|--------|-------|-----------|-------------|----------|----------|---------|
+|--------|:-----:|:---------:|:-----------:|:--------:|:--------:|:-------:|
 | Dashboard | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Customers | ✓ | ✓ | Own only | — | — | — |
-| Leads | ✓ | ✓ | Own only | — | — | — |
+| Leads / Kanban | ✓ | ✓ | Own only | — | — | — |
 | Products (view) | ✓ | ✓ | ✓ | ✓ | — | — |
 | Products (edit) | ✓ | ✓ | — | ✓ | — | — |
 | CSV Import | ✓ | — | — | ✓ | — | — |
 | Reservations | ✓ | ✓ | ✓ | — | — | — |
 | Quotations | ✓ | ✓ | ✓ | — | — | — |
-| After Sales | ✓ | — | — | — | — | ✓ |
+| After-Sales | ✓ | — | — | — | — | ✓ |
 | Reports | ✓ | ✓ | — | — | ✓ | — |
 | Zoho Sync | ✓ | — | — | — | ✓ | — |
-| Settings | ✓ | — | — | — | ✓ | — |
+| Settings / Users | ✓ | — | — | — | — | — |
 
 ---
 
-## Zoho Books Integration
-
-### Setup
-1. Go to **Settings → Zoho Config** in CRM
-2. Enter your Zoho Books credentials:
-   - Client ID
-   - Client Secret
-   - Refresh Token
-   - Organization ID
-   - API Domain (e.g. `https://www.zohoapis.in`)
-3. Click **Test Connection**
-4. Use **Sync Now** to perform initial sync
-
-### What syncs
-| Direction | Data |
-|-----------|------|
-| Zoho → CRM | Items (products), Contacts, Invoices, Payments, Estimates |
-| CRM → Zoho | New customers, Estimates, Invoices |
-
-### Webhook setup
-Configure these webhook endpoints in your Zoho Books account:
-```
-POST https://your-crm-api.com/api/webhooks/zoho/invoice-created/
-POST https://your-crm-api.com/api/webhooks/zoho/invoice-updated/
-POST https://your-crm-api.com/api/webhooks/zoho/payment-received/
-POST https://your-crm-api.com/api/webhooks/zoho/item-updated/
-POST https://your-crm-api.com/api/webhooks/zoho/contact-updated/
-POST https://your-crm-api.com/api/webhooks/zoho/estimate-accepted/
-```
-
----
-
-## GCP Deployment
-
-### Services used
-| Service | Purpose |
-|---------|---------|
-| Cloud Run | Backend API, Frontend, Celery worker |
-| Cloud SQL (PostgreSQL) | Primary database |
-| Memorystore (Redis) | Celery broker + result backend |
-| Cloud Storage | Product images, certificates, repair photos |
-| Secret Manager | All credentials and secrets |
-| Cloud Scheduler | Cron jobs for sync and expiry |
-| Cloud Logging | Application logs |
-
-### Deploy steps
+## ☁️ Deploy to GCP Cloud Run
 
 ```bash
-# 1. Build and push Docker images
-gcloud builds submit --tag gcr.io/PROJECT_ID/jewelry-crm-backend ./backend
-gcloud builds submit --tag gcr.io/PROJECT_ID/jewelry-crm-frontend ./frontend
+# Build & push images
+gcloud builds submit --tag gcr.io/PROJECT_ID/kaarix-crm-backend ./backend
+gcloud builds submit --tag gcr.io/PROJECT_ID/kaarix-crm-frontend ./frontend
 
-# 2. Deploy backend
-gcloud run deploy jewelry-crm-api \
-  --image gcr.io/PROJECT_ID/jewelry-crm-backend \
+# Deploy backend
+gcloud run deploy kaarix-crm-api \
+  --image gcr.io/PROJECT_ID/kaarix-crm-backend \
   --region asia-south1 \
-  --platform managed \
-  --set-env-vars DJANGO_SETTINGS_MODULE=config.settings.production \
-  --set-secrets "DJANGO_SECRET_KEY=django-secret:latest,ZOHO_CLIENT_ID=zoho-client-id:latest"
+  --set-env-vars DJANGO_SETTINGS_MODULE=config.settings.production
 
-# 3. Deploy frontend
-gcloud run deploy jewelry-crm-frontend \
-  --image gcr.io/PROJECT_ID/jewelry-crm-frontend \
+# Deploy frontend
+gcloud run deploy kaarix-crm-frontend \
+  --image gcr.io/PROJECT_ID/kaarix-crm-frontend \
   --region asia-south1 \
-  --platform managed \
-  --set-env-vars NEXT_PUBLIC_API_URL=https://jewelry-crm-api-xxx-el.a.run.app
+  --set-env-vars NEXT_PUBLIC_API_URL=https://your-api-url.run.app
 
-# 4. Run migrations
+# Run migrations
 gcloud run jobs execute migrate-job --region asia-south1
 ```
 
-See `deploy/` directory for full deployment scripts and Cloud Scheduler configs.
+See `deploy/` for full scripts, Cloud Scheduler configs, and Secret Manager setup.
 
 ---
 
-## API Documentation
+## 🤝 Contributing
 
-Swagger UI is available at `/api/docs/` when the backend is running.
+Pull requests are welcome! Please open an issue first for major changes.
 
-### Key endpoints
-
-```
-POST   /api/auth/login/                    Login
-GET    /api/auth/me/                       Current user
-
-GET    /api/customers/                     List customers
-POST   /api/customers/                     Create customer
-GET    /api/customers/{id}/leads/          Customer's leads
-
-GET    /api/leads/                         List leads
-POST   /api/leads/{id}/close_won/          Close won
-POST   /api/leads/{id}/close_lost/         Close lost
-
-GET    /api/products/                      Product catalog
-POST   /api/products/import_csv/           Import CSV
-GET    /api/products/available/            Available products
-GET    /api/products/missing_sku/          Missing SKU report
-
-POST   /api/reservations/                  Create reservation
-POST   /api/reservations/{id}/cancel/      Cancel reservation
-POST   /api/reservations/{id}/extend/      Extend reservation
-
-POST   /api/quotations/{id}/convert_to_zoho_invoice/  Convert to Zoho invoice
-
-POST   /api/zoho/sync/items/               Sync items from Zoho
-POST   /api/zoho/sync/contacts/            Sync contacts from Zoho
-```
+1. Fork the repo
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Commit your changes
+4. Push and open a PR
 
 ---
 
-## Business Rules
+## 📄 License
 
-- Only **Available** products can be reserved
-- **Reserved** products cannot be reserved again
-- Reservations auto-expire via hourly Celery job
-- Expired/cancelled reservations release the product back to **Available**
-- Quotations converted to Zoho invoice mark product as **Sold**
-- All Zoho API calls are logged in sync_logs
-- Duplicate webhook events are safely ignored (idempotent)
-- Zoho OAuth tokens are auto-refreshed
+MIT — free to use, modify, and distribute.
 
 ---
 
-## MVP Phases
+## 🔍 Keywords
 
-| Phase | Features |
-|-------|---------|
-| **Phase 1** ✓ | Login, Dashboard, Customers, Leads, Follow-up Tasks, CSV Import, Product Catalog |
-| **Phase 2** ✓ | Product Images, Certificates, Reservations, Quotation Builder |
-| **Phase 3** | Zoho Books OAuth, Item Sync, Contact Sync, Invoice Creation, Sync Logs |
-| **Phase 4** | After-Sales Module, Reports, Stock Aging, Salesperson Performance |
+jewelry crm, gold crm, jewellery management software, gold shop software, jewelry store crm, gold price crm, jewellery erp, gold inventory management, diamond jewelry crm, jewelry brand software, gold retailer crm, jewelry pos system, jewellery shop management, kaarix crm, open source jewelry software, django crm, nextjs crm, zoho books jewelry, mcx gold price, india gold price api, jewelry quotation software, after sales jewelry, jewelry repair management

@@ -46,6 +46,14 @@ class ProductSerializer(serializers.ModelSerializer):
     certificates = ProductCertificateSerializer(many=True, read_only=True)
     primary_image = serializers.SerializerMethodField()
 
+    # Override choice fields to accept any string (incl. legacy Zoho values that
+    # may not match the current CATEGORY_CHOICES / CERT_TYPES list).
+    category = serializers.CharField(required=False, allow_blank=True, default='other')
+    certification_type = serializers.CharField(required=False, allow_blank=True, default='none')
+    metal_type = serializers.CharField(required=False, allow_blank=True)
+    metal_purity = serializers.CharField(required=False, allow_blank=True)
+    inventory_status = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = Product
         fields = [

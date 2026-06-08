@@ -56,6 +56,14 @@ export function useLeadActivities(id: number) {
   })
 }
 
+function extractDjangoError(error: any): string {
+  const detail = error?.response?.data
+  if (!detail || typeof detail !== 'object') return ''
+  return Object.entries(detail)
+    .map(([f, m]) => `${f}: ${Array.isArray(m) ? m.join(', ') : m}`)
+    .join(' | ')
+}
+
 export function useCreateLead() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -64,8 +72,10 @@ export function useCreateLead() {
       queryClient.invalidateQueries({ queryKey: ['leads'] })
       toast.success('Lead created successfully')
     },
-    onError: () => {
-      toast.error('Failed to create lead')
+    onError: (error: any) => {
+      const msg = extractDjangoError(error)
+      console.error('Lead create 400:', error?.response?.data)
+      toast.error(msg ? `Validation error — ${msg}` : 'Failed to create lead')
     },
   })
 }
@@ -78,8 +88,10 @@ export function useUpdateLead(id: number) {
       queryClient.invalidateQueries({ queryKey: ['leads'] })
       toast.success('Lead updated successfully')
     },
-    onError: () => {
-      toast.error('Failed to update lead')
+    onError: (error: any) => {
+      const msg = extractDjangoError(error)
+      console.error('Lead update 400:', error?.response?.data)
+      toast.error(msg ? `Validation error — ${msg}` : 'Failed to update lead')
     },
   })
 }

@@ -281,7 +281,17 @@ export default function SettingsPage() {
             <DialogTitle>Add User</DialogTitle>
           </DialogHeader>
           <form
-            onSubmit={handleSubmit((data) => createUser(data as Record<string, unknown>))}
+            onSubmit={handleSubmit((raw) => {
+              const payload: Record<string, unknown> = {
+                username: raw.username,
+                password: raw.password,
+                role:     raw.role,
+                ...(raw.first_name ? { first_name: raw.first_name } : {}),
+                ...(raw.last_name  ? { last_name:  raw.last_name  } : {}),
+                ...(raw.email      ? { email:      raw.email      } : {}),
+              }
+              createUser(payload)
+            })}
             className="space-y-4"
           >
             <div className="grid grid-cols-2 gap-4">

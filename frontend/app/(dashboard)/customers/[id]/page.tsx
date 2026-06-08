@@ -72,7 +72,18 @@ export default function CustomerDetailPage() {
   }
 
   const handleSave = () => {
-    updateCustomer(editData, {
+    const DECIMAL_FIELDS = ['preferred_budget_min', 'preferred_budget_max']
+    const DATE_FIELDS    = ['birthday', 'anniversary']
+    const OMIT_IF_EMPTY  = ['preferred_metal']  // choice with blank=True but still safer to omit
+
+    const cleaned: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(editData)) {
+      if (DATE_FIELDS.includes(k))         { cleaned[k] = v || null; continue }
+      if (DECIMAL_FIELDS.includes(k))      { cleaned[k] = v ? Number(v) : null; continue }
+      if (OMIT_IF_EMPTY.includes(k) && !v) { continue }
+      cleaned[k] = v
+    }
+    updateCustomer(cleaned, {
       onSuccess: () => setEditOpen(false),
     })
   }

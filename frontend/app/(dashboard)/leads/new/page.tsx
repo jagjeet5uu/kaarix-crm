@@ -53,16 +53,21 @@ export default function NewLeadPage() {
   const onSubmit = (data: FormData) => {
     createLead(
       {
-        ...data,
-        email: data.email || undefined,
-        source: data.source || undefined,
-        budget_min: data.budget_min ? Number(data.budget_min) : undefined,
-        budget_max: data.budget_max ? Number(data.budget_max) : undefined,
+        customer_name:       data.customer_name,
+        mobile:              data.mobile,
+        stage:               data.stage,
+        ...(data.email               ? { email: data.email }                           : {}),
+        ...(data.source              ? { source: data.source }                         : {}),
+        ...(data.interested_category ? { interested_category: data.interested_category }: {}),
+        ...(data.notes               ? { notes: data.notes }                           : {}),
+        // DateField rejects '' — send null when blank
+        follow_up_date: data.follow_up_date || null,
+        // DecimalField rejects '' — send null when blank
+        budget_min: data.budget_min ? Number(data.budget_min) : null,
+        budget_max: data.budget_max ? Number(data.budget_max) : null,
       },
       {
-        onSuccess: (res) => {
-          router.push('/leads/' + res.data.id)
-        },
+        onSuccess: (res) => router.push('/leads/' + res.data.id),
       }
     )
   }

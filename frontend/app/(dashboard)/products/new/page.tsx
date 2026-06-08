@@ -172,11 +172,21 @@ export default function NewProductPage() {
   const onSubmit = (data: FormData) => {
     createProduct(
       {
-        ...data,
-        selling_price:  data.selling_price  ? Number(data.selling_price)  : undefined,
-        purchase_price: data.purchase_price ? Number(data.purchase_price) : undefined,
-        gross_weight:   data.gross_weight   ? Number(data.gross_weight)   : undefined,
-        net_weight:     data.net_weight     ? Number(data.net_weight)     : undefined,
+        item_name:   data.item_name,
+        // Choice fields — omit when empty (Django rejects '' for non-blank choices)
+        ...(data.category         ? { category: data.category }                 : {}),
+        ...(data.inventory_status ? { inventory_status: data.inventory_status } : {}),
+        ...(data.metal_type       ? { metal_type: data.metal_type }             : {}),
+        ...(data.metal_purity     ? { metal_purity: data.metal_purity }         : {}),
+        // Optional string fields
+        ...(data.sku              ? { sku: data.sku }                           : {}),
+        ...(data.hsn_code         ? { hsn_code: data.hsn_code }                 : {}),
+        ...(data.description      ? { description: data.description }           : {}),
+        // Decimal fields — null when blank
+        selling_price:  data.selling_price  ? Number(data.selling_price)  : null,
+        purchase_price: data.purchase_price ? Number(data.purchase_price) : null,
+        gross_weight:   data.gross_weight   ? Number(data.gross_weight)   : null,
+        net_weight:     data.net_weight     ? Number(data.net_weight)     : null,
       },
       { onSuccess: (res) => router.push('/products/' + res.data.id) }
     )

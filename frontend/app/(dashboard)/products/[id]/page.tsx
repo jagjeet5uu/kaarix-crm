@@ -129,7 +129,15 @@ export default function ProductDetailPage() {
   }
 
   const handleSave = () => {
-    updateProduct(editData, {
+    // Decimal fields must be null (not '') when empty — Django rejects empty strings
+    const DECIMAL_FIELDS = ['selling_price', 'purchase_price', 'gross_weight', 'net_weight', 'diamond_weight']
+    const cleaned = Object.fromEntries(
+      Object.entries(editData).map(([k, v]) => [
+        k,
+        DECIMAL_FIELDS.includes(k) && v === '' ? null : v,
+      ])
+    )
+    updateProduct(cleaned, {
       onSuccess: () => {
         toast.success('Product updated')
         setEditOpen(false)

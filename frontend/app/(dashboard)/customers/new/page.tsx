@@ -57,19 +57,35 @@ export default function NewCustomerPage() {
   })
 
   const onSubmit = (data: FormData) => {
-    createCustomer(
-      {
-        ...data,
-        email: data.email || undefined,
-        preferred_budget_min: data.preferred_budget_min ? Number(data.preferred_budget_min) : undefined,
-        preferred_budget_max: data.preferred_budget_max ? Number(data.preferred_budget_max) : undefined,
+    // Django rejects '' for DateField / DecimalField — send null/undefined instead
+    const payload: Record<string, unknown> = {
+      first_name: data.first_name,
+      last_name: data.last_name,
+      mobile: data.mobile,
+      customer_type: data.customer_type,
+      // optional strings — only include if non-empty
+      ...(data.email                && { email: data.email }),
+      ...(data.city                 && { city: data.city }),
+      ...(data.address              && { address: data.address }),
+      ...(data.lead_source          && { lead_source: data.lead_source }),
+      ...(data.preferred_category   && { preferred_category: data.preferred_category }),
+      ...(data.preferred_metal      && { preferred_metal: data.preferred_metal }),
+      ...(data.ring_size            && { ring_size: data.ring_size }),
+      ...(data.bracelet_size        && { bracelet_size: data.bracelet_size }),
+      ...(data.notes                && { notes: data.notes }),
+      // dates — null when blank
+      birthday:    data.birthday    || null,
+      anniversary: data.anniversary || null,
+      // decimals — null when blank
+      preferred_budget_min: data.preferred_budget_min ? Number(data.preferred_budget_min) : null,
+      preferred_budget_max: data.preferred_budget_max ? Number(data.preferred_budget_max) : null,
+    }
+
+    createCustomer(payload, {
+      onSuccess: (res) => {
+        router.push(`/customers/${res.data.id}`)
       },
-      {
-        onSuccess: (res) => {
-          router.push(`/customers/${res.data.id}`)
-        },
-      }
-    )
+    })
   }
 
   return (

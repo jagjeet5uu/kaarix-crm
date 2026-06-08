@@ -25,6 +25,14 @@ export function useCustomer(id: number) {
   })
 }
 
+function extractDjangoError(error: any): string {
+  const detail = error?.response?.data
+  if (!detail || typeof detail !== 'object') return ''
+  return Object.entries(detail)
+    .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+    .join(' | ')
+}
+
 export function useCreateCustomer() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -33,8 +41,10 @@ export function useCreateCustomer() {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       toast.success('Customer created successfully')
     },
-    onError: () => {
-      toast.error('Failed to create customer')
+    onError: (error: any) => {
+      const msg = extractDjangoError(error)
+      console.error('Customer create 400:', error?.response?.data)
+      toast.error(msg ? `Validation error — ${msg}` : 'Failed to create customer')
     },
   })
 }
@@ -47,8 +57,10 @@ export function useUpdateCustomer(id: number) {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       toast.success('Customer updated successfully')
     },
-    onError: () => {
-      toast.error('Failed to update customer')
+    onError: (error: any) => {
+      const msg = extractDjangoError(error)
+      console.error('Customer update 400:', error?.response?.data)
+      toast.error(msg ? `Validation error — ${msg}` : 'Failed to update customer')
     },
   })
 }

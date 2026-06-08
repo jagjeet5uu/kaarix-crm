@@ -177,15 +177,15 @@ export function QuotationBuilder({ quotation }: QuotationBuilderProps) {
   const { data: searchResults } = useQuery({
     queryKey: ['products-search', debouncedSearch],
     queryFn: async () => {
-      if (!debouncedSearch || debouncedSearch.length < 2) return []
+      if (!debouncedSearch || debouncedSearch.length < 1) return []
       const res = await productsAPI.list({
         search: debouncedSearch,
-        page_size: 8,
-        inventory_status: 'available',
+        page_size: 10,
+        is_active: true,
       })
       return res.data?.results || res.data || []
     },
-    enabled: debouncedSearch.length >= 2,
+    enabled: debouncedSearch.length >= 1,
   })
 
   useEffect(() => {
@@ -793,7 +793,7 @@ export function QuotationBuilder({ quotation }: QuotationBuilderProps) {
                             setNewItem({ ...newItem, item_name: e.target.value })
                             setShowDropdown(true)
                           }}
-                          onFocus={() => productSearch.length >= 2 && setShowDropdown(true)}
+                          onFocus={() => productSearch.length >= 1 && setShowDropdown(true)}
                         />
                       </div>
                       {showDropdown && searchResults && searchResults.length > 0 && (
@@ -802,24 +802,37 @@ export function QuotationBuilder({ quotation }: QuotationBuilderProps) {
                             <button
                               key={product.id}
                               type="button"
-                              className="w-full text-left px-3 py-2 hover:bg-amber-50 border-b border-gray-100 last:border-0 transition-colors"
+                              className="w-full text-left px-3 py-2.5 hover:bg-amber-50 border-b border-gray-100 last:border-0 transition-colors"
                               onMouseDown={(e) => {
                                 e.preventDefault()
                                 selectProduct(product)
                               }}
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="text-xs font-medium text-gray-900 truncate">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-semibold text-gray-900 truncate">
                                     {product.item_name}
                                   </p>
-                                  <p className="text-xs text-gray-400">
-                                    {product.sku || 'No SKU'} · {product.category}
+                                  <p className="text-[11px] text-gray-400 mt-0.5">
+                                    {product.sku || 'No SKU'}
+                                    {product.metal_purity && ` · ${product.metal_purity.toUpperCase()}`}
+                                    {product.category && ` · ${product.category.replace(/_/g, ' ')}`}
                                   </p>
                                 </div>
-                                <span className="text-xs font-semibold text-amber-700 whitespace-nowrap flex-shrink-0">
-                                  {formatCurrency(product.selling_price as number)}
-                                </span>
+                                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                  <span className="text-xs font-bold text-amber-700">
+                                    {product.selling_price ? formatCurrency(product.selling_price as number) : '—'}
+                                  </span>
+                                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                                    product.inventory_status === 'available'
+                                      ? 'bg-green-100 text-green-700'
+                                      : product.inventory_status === 'sold'
+                                      ? 'bg-red-100 text-red-600'
+                                      : 'bg-amber-100 text-amber-700'
+                                  }`}>
+                                    {product.inventory_status}
+                                  </span>
+                                </div>
                               </div>
                             </button>
                           ))}

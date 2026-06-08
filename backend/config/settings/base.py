@@ -159,6 +159,12 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 # GoldAPI.io — real-time gold & silver prices
 GOLDAPI_KEY = os.environ.get('GOLDAPI_KEY', '')
 
+# India domestic gold premium over international spot price.
+# India price = international × GOLD_INDIA_PREMIUM
+# Breakdown: 15% basic customs duty + 5% AIDC cess + 3% GST ≈ 1.2369
+# Adjust via env var if the government changes duty rates.
+GOLD_INDIA_PREMIUM = float(os.environ.get('GOLD_INDIA_PREMIUM', '1.2369'))
+
 # Instagram Webhook
 INSTAGRAM_VERIFY_TOKEN = os.environ.get('INSTAGRAM_VERIFY_TOKEN', 'miraya_instagram_webhook_2026')
 INSTAGRAM_PAGE_ACCESS_TOKEN = os.environ.get('INSTAGRAM_PAGE_ACCESS_TOKEN', '')

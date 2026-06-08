@@ -466,6 +466,16 @@ class GoldPriceView(APIView):
         with urllib.request.urlopen(req, timeout=8) as resp:
             return json.loads(resp.read().decode())
 
+    # India domestic price = international spot × INDIA_PREMIUM
+    # Breakdown: 15% basic customs duty + 5% AIDC cess + 3% GST = ~1.2369 multiplier
+    # Adjust this constant if the government changes duty rates.
+    INDIA_PREMIUM = 1.0  # override in settings if needed
+
+    def _india_price(self, intl_price: float) -> float:
+        """Convert international INR spot to India domestic price."""
+        premium = getattr(settings, 'GOLD_INDIA_PREMIUM', self.INDIA_PREMIUM)
+        return round(intl_price * premium, 2)
+
     def get(self, request):
         cached = cache.get(self.CACHE_KEY)
         if cached:
@@ -475,36 +485,43 @@ class GoldPriceView(APIView):
             gold = self._fetch_metal('XAU')
             silver = self._fetch_metal('XAG')
 
+            def gp(key):
+                """Get gram price from GoldAPI response, adjusted for India."""
+                return self._india_price(gold.get(key, 0))
+
+            def sp(key):
+                return self._india_price(silver.get(key, 0))
+
             data = {
                 'cached': False,
                 'updated_at': timezone.now().isoformat(),
                 'gold': {
-                    'price_troy_oz_inr': round(gold.get('price', 0), 2),
+                    'price_troy_oz_inr': self._india_price(gold.get('price', 0)),
                     'change': round(gold.get('ch', 0), 2),
                     'change_pct': round(gold.get('chp', 0), 2),
-                    'prev_close': round(gold.get('prev_close_price', 0), 2),
+                    'prev_close': self._india_price(gold.get('prev_close_price', 0)),
                     'per_gram': {
-                        '24k': round(gold.get('price_gram_24k', 0), 2),
-                        '22k': round(gold.get('price_gram_22k', 0), 2),
-                        '21k': round(gold.get('price_gram_21k', 0), 2),
-                        '20k': round(gold.get('price_gram_20k', 0), 2),
-                        '18k': round(gold.get('price_gram_18k', 0), 2),
-                        '14k': round(gold.get('price_gram_14k', 0), 2),
+                        '24k': gp('price_gram_24k'),
+                        '22k': gp('price_gram_22k'),
+                        '21k': gp('price_gram_21k'),
+                        '20k': gp('price_gram_20k'),
+                        '18k': gp('price_gram_18k'),
+                        '14k': gp('price_gram_14k'),
                     },
                 },
                 'silver': {
-                    'price_troy_oz_inr': round(silver.get('price', 0), 2),
+                    'price_troy_oz_inr': self._india_price(silver.get('price', 0)),
                     'change': round(silver.get('ch', 0), 2),
                     'change_pct': round(silver.get('chp', 0), 2),
-                    'prev_close': round(silver.get('prev_close_price', 0), 2),
+                    'prev_close': self._india_price(silver.get('prev_close_price', 0)),
                     'per_gram': {
-                        '999': round(silver.get('price_gram_24k', 0), 2),
+                        '999': sp('price_gram_24k'),
                     },
                 },
             }
             ttl = self._ttl_until_next_9am_ist()
             cache.set(self.CACHE_KEY, data, ttl)
-            cache.set(self.STALE_KEY, data, ttl + 86400)  # keep stale copy 1 extra day
+            cache.set(self.STALE_KEY, data, ttl + 86400)
             return Response(data)
 
         except Exception as e:

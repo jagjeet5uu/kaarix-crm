@@ -52,8 +52,17 @@ export function CreateReservationModal({ open, onOpenChange }: CreateReservation
       reset()
       onOpenChange(false)
     },
-    onError: () => {
-      toast.error('Failed to create reservation')
+    onError: (error: any) => {
+      const detail = error?.response?.data
+      if (detail && typeof detail === 'object') {
+        const msg = Object.entries(detail)
+          .map(([f, m]) => `${f}: ${Array.isArray(m) ? m.join(', ') : m}`)
+          .join(' | ')
+        toast.error(msg)
+        console.error('Reservation 400:', detail)
+      } else {
+        toast.error('Failed to create reservation')
+      }
     },
   })
 
@@ -61,10 +70,11 @@ export function CreateReservationModal({ open, onOpenChange }: CreateReservation
     mutate({
       product: Number(data.product),
       customer: Number(data.customer),
-      lead: data.lead ? Number(data.lead) : undefined,
-      reserved_until: data.reserved_until,
-      advance_amount: data.advance_amount ? Number(data.advance_amount) : undefined,
-      notes: data.notes,
+      ...(data.lead ? { lead: Number(data.lead) } : {}),
+      // DateTimeField requires full ISO string — append end-of-day time
+      reserved_until: data.reserved_until ? `${data.reserved_until}T23:59:00` : undefined,
+      ...(data.advance_amount ? { advance_amount: Number(data.advance_amount) } : {}),
+      ...(data.notes ? { notes: data.notes } : {}),
     })
   }
 

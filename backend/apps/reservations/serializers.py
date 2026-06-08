@@ -17,7 +17,7 @@ class ProductReservationSerializer(serializers.ModelSerializer):
             'lead', 'reserved_by', 'reserved_by_name', 'reserved_at', 'reserved_until',
             'advance_amount', 'status', 'notes', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'reserved_at', 'created_at', 'updated_at', 'reserved_by_name']
+        read_only_fields = ['id', 'reserved_at', 'created_at', 'updated_at', 'reserved_by_name', 'reserved_by']
 
     def get_reserved_by_name(self, obj):
         if obj.reserved_by:

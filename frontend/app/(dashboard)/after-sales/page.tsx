@@ -57,7 +57,16 @@ export default function AfterSalesPage() {
       reset()
       setShowCreate(false)
     },
-    onError: () => toast.error('Failed to create request'),
+    onError: (error: any) => {
+      const detail = error?.response?.data
+      if (detail && typeof detail === 'object') {
+        const msg = Object.entries(detail).map(([f, m]) => `${f}: ${Array.isArray(m) ? m.join(', ') : m}`).join(' | ')
+        toast.error(msg)
+        console.error('After-sales 400:', detail)
+      } else {
+        toast.error('Failed to create request')
+      }
+    },
   })
 
   const requests: AfterSalesRequest[] = data?.results || data || []
@@ -159,9 +168,21 @@ export default function AfterSalesPage() {
             <DialogTitle>New After-Sales Request</DialogTitle>
           </DialogHeader>
           <form
-            onSubmit={handleSubmit((data) =>
-              createRequest(data as Record<string, unknown>)
-            )}
+            onSubmit={handleSubmit((raw) => {
+              // Clean raw form data before sending to Django
+              const payload: Record<string, unknown> = {
+                customer: Number(raw.customer),
+                request_type: raw.request_type,
+                received_date: raw.received_date,
+                // Optional fields — omit or null when blank
+                ...(raw.product            ? { product: Number(raw.product) } : {}),
+                ...(raw.invoice_reference  ? { invoice_reference: raw.invoice_reference } : {}),
+                expected_delivery_date: raw.expected_delivery_date || null,
+                cost: raw.cost             ? Number(raw.cost)        : null,
+                ...(raw.notes              ? { notes: raw.notes }     : {}),
+              }
+              createRequest(payload)
+            })}
             className="space-y-4"
           >
             <div className="grid grid-cols-2 gap-4">

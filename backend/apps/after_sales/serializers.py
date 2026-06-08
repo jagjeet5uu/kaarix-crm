@@ -26,7 +26,7 @@ class AfterSalesRequestSerializer(serializers.ModelSerializer):
             'assigned_staff', 'assigned_staff_name', 'cost', 'notes',
             'images', 'created_by', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'assigned_staff_name', 'product_name']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'assigned_staff_name', 'product_name', 'created_by']
 
     def get_assigned_staff_name(self, obj):
         if obj.assigned_staff:

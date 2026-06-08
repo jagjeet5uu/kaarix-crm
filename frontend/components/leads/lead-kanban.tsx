@@ -89,7 +89,7 @@ export function LeadKanban({ leads, isLoading }: LeadKanbanProps) {
         } else if (newStage === 'closed_lost') {
           await leadsAPI.closeLost(leadId, { reason: 'Stage changed via Kanban' })
         } else {
-          await leadsAPI.update(leadId, { stage: newStage })
+          await leadsAPI.changeStage(leadId, newStage)
         }
         // Refresh data from server
         queryClient.invalidateQueries({ queryKey: ['leads'] })

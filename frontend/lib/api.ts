@@ -66,6 +66,7 @@ export const leadsAPI = {
   addActivity: (id: number, data: Record<string, unknown>) => api.post(`/leads/${id}/activities/`, data),
   closeWon: (id: number, data?: Record<string, unknown>) => api.post(`/leads/${id}/close_won/`, data),
   closeLost: (id: number, data: Record<string, unknown>) => api.post(`/leads/${id}/close_lost/`, data),
+  changeStage: (id: number, stage: string) => api.post(`/leads/${id}/change_stage/`, { stage }),
   followUpsToday: () => api.get('/leads/follow_ups_today/'),
   overdueFollowUps: () => api.get('/leads/overdue_follow_ups/'),
 }

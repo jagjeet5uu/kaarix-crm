@@ -57,8 +57,18 @@ export function useUpdateProduct(id: number) {
       queryClient.invalidateQueries({ queryKey: ['products'] })
       toast.success('Product updated successfully')
     },
-    onError: () => {
-      toast.error('Failed to update product')
+    onError: (error: any) => {
+      // Surface the actual Django validation error so we can debug
+      const detail = error?.response?.data
+      if (detail && typeof detail === 'object') {
+        const messages = Object.entries(detail)
+          .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+          .join(' | ')
+        toast.error(`Validation error — ${messages}`)
+        console.error('Product update 400:', detail)
+      } else {
+        toast.error('Failed to update product')
+      }
     },
   })
 }

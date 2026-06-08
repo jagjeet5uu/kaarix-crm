@@ -59,7 +59,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'margin', 'images', 'certificates', 'primary_image',
             'created_by', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'margin', 'primary_image']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'margin', 'primary_image', 'created_by']
 
     def get_margin(self, obj):
         return obj.margin

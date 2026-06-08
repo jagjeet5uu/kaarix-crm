@@ -129,14 +129,16 @@ export default function ProductDetailPage() {
   }
 
   const handleSave = () => {
-    // Decimal fields must be null (not '') when empty — Django rejects empty strings
+    // Decimal fields: '' → null (Django DecimalField rejects empty strings)
     const DECIMAL_FIELDS = ['selling_price', 'purchase_price', 'gross_weight', 'net_weight', 'diamond_weight']
-    const cleaned = Object.fromEntries(
-      Object.entries(editData).map(([k, v]) => [
-        k,
-        DECIMAL_FIELDS.includes(k) && v === '' ? null : v,
-      ])
-    )
+    // Choice/required fields: omit entirely when '' so partial PATCH leaves the DB value intact
+    const OMIT_IF_EMPTY = ['category', 'certification_type', 'item_name']
+
+    const cleaned: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(editData)) {
+      if (OMIT_IF_EMPTY.includes(k) && v === '') continue
+      cleaned[k] = DECIMAL_FIELDS.includes(k) && v === '' ? null : v
+    }
     updateProduct(cleaned, {
       onSuccess: () => {
         toast.success('Product updated')
